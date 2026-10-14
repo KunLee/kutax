@@ -1,0 +1,526 @@
+// Retro toy-electronics theme, from the KuTax2 Figma design (docs/figma/Kutax2). Default theme.
+// Scoped to html.theme-retro[data-theme='retro']: one notch more specific than Angular's encapsulated
+// component selectors (which add an attribute per element), so the theme wins without !important.
+// Text sizes stay at 12px or more and colour pairs keep WCAG AA contrast (checked with axe).
+$r: "html.theme-retro[data-theme='retro']";
+
+#{$r} {
+  --ink: #062f52;
+  --ink-soft: #234357;
+  --paper: #c8efea;
+  --white: #f8f2db;
+  --line: #0b5271;
+  --purple: #086a8b;
+  --purple-ink: #075c7a;
+  --purple-dark: #06375e;
+  --purple-soft: #8fdad9;
+  --sky: #20c9c6;
+  --sky-soft: #bcebea;
+  --orange: #f47d6b;
+  --orange-soft: #ffc2aa;
+  --orange-ink: #7d2a1b;
+  --yellow: #f5dc83;
+  --yellow-soft: #fbefc0;
+  --mint: #75d5ae;
+  --mint-soft: #b8ead0;
+  --mint-ink: #0b5a42;
+  --blue-ink: #0a5368;
+  --shadow: 0 18px 0 rgba(4, 43, 73, 0.12);
+  --shadow-small: 0 6px 0 rgba(4, 43, 73, 0.16);
+  --radius: 10px;
+  --hard: 6px 7px 0 rgba(6, 47, 82, 0.22);
+  --screen: #06375e;
+  --screen-text: #d8f7ef;
+  --screen-muted: #acdeda;
+}
+
+#{$r} body {
+  background:
+    linear-gradient(rgba(6, 47, 82, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 47, 82, 0.045) 1px, transparent 1px),
+    var(--paper);
+  background-size: 32px 32px;
+}
+
+// ---------- Type ----------
+#{$r} .eyebrow,
+#{$r} .kicker {
+  color: var(--purple-ink);
+}
+#{$r} h1 {
+  letter-spacing: -0.045em;
+}
+
+// ---------- Surfaces ----------
+#{$r} .card {
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--hard);
+}
+#{$r} .card--bold {
+  box-shadow: 8px 9px 0 rgba(6, 47, 82, 0.28);
+}
+
+// ---------- Buttons ----------
+#{$r} .btn {
+  background: var(--yellow);
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 -4px 0 rgba(137, 104, 41, 0.18),
+    3px 3px 0 var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+#{$r} .btn--primary {
+  background: var(--orange);
+  box-shadow:
+    inset 0 -4px 0 rgba(116, 42, 54, 0.22),
+    4px 4px 0 #031e36;
+  color: var(--ink);
+}
+#{$r} .btn--dark {
+  background: var(--ink);
+  box-shadow: 3px 3px 0 #031e36;
+  color: var(--white);
+}
+#{$r} .btn--quiet {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ink);
+}
+#{$r} .icon-btn,
+#{$r} .year-select,
+#{$r} .avatar {
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+#{$r} .icon-btn {
+  background: var(--yellow);
+}
+
+// ---------- Forms ----------
+#{$r} .input,
+#{$r} .field > input,
+#{$r} .field > select,
+#{$r} .field > textarea {
+  background: #e9f5df;
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  box-shadow: inset 0 -3px 0 rgba(6, 47, 82, 0.12);
+  &:focus {
+    border-color: var(--ink);
+    box-shadow: 3px 3px 0 var(--yellow);
+  }
+}
+#{$r} .field {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  > input,
+  > select,
+  > textarea {
+    font-family: 'Manrope', system-ui, sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+}
+#{$r} .check input {
+  accent-color: var(--purple);
+}
+
+// ---------- Feedback ----------
+#{$r} .notice {
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+}
+#{$r} .chip {
+  border: 1px solid rgba(6, 47, 82, 0.45);
+  border-radius: 4px;
+}
+#{$r} .reading-pill {
+  background: var(--yellow);
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  color: var(--ink);
+}
+
+// ---------- Lists ----------
+#{$r} .item {
+  background: #a9ded9;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  box-shadow: inset 0 -3px 0 rgba(6, 47, 82, 0.1);
+  margin-bottom: 2px;
+  &:hover,
+  &.is-active {
+    background: var(--yellow);
+    border-color: var(--ink);
+    box-shadow:
+      inset 0 -4px 0 rgba(107, 79, 20, 0.12),
+      3px 3px 0 var(--ink);
+  }
+}
+#{$r} .thumb {
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+}
+#{$r} .tone-purple {
+  background: var(--mint);
+  color: var(--ink);
+}
+#{$r} .tone-blue {
+  background: #52d4d2;
+  color: var(--ink);
+}
+#{$r} .tone-orange {
+  background: var(--orange);
+  color: var(--ink);
+}
+#{$r} .tone-mint {
+  background: var(--mint);
+  color: var(--ink);
+}
+#{$r} .tone-yellow {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+// Numbered workstation captions ("01 / Queue"), shown only in this theme.
+.panel-cap {
+  display: none;
+}
+#{$r} .panel-cap {
+  align-items: center;
+  background: var(--screen);
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  color: var(--screen-text);
+  display: flex;
+  font-family: var(--mono);
+  font-size: 12px;
+  gap: 8px;
+  justify-content: space-between;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+  min-height: 36px;
+  padding: 7px 10px;
+  text-transform: uppercase;
+  small {
+    color: var(--yellow);
+    font-size: 12px;
+  }
+}
+
+// ---------- Shell ----------
+#{$r} .header {
+  background: var(--sky);
+  border-bottom: 3px solid var(--ink);
+  box-shadow: 0 5px 0 rgba(6, 47, 82, 0.14);
+}
+#{$r} .brand-mark {
+  background: var(--yellow);
+  border: 3px solid var(--ink);
+  border-radius: 9px;
+  span {
+    background: var(--orange);
+    border: 1px solid var(--ink);
+  }
+}
+#{$r} .tabs {
+  background: #096a83;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),
+    3px 3px 0 var(--ink);
+  gap: 4px;
+  a {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--screen-text);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    &:hover {
+      color: var(--white);
+    }
+    &.is-active {
+      background: var(--yellow);
+      border-color: var(--ink);
+      box-shadow: inset 0 -3px 0 #d3a94f;
+      color: var(--ink);
+    }
+  }
+}
+#{$r} .year-select {
+  background: var(--yellow);
+}
+#{$r} .avatar {
+  background: var(--orange);
+}
+#{$r} .menu {
+  background: var(--sky-soft);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 6px 6px 0 var(--ink);
+  a:hover,
+  button:hover {
+    background: var(--yellow);
+  }
+}
+#{$r} .footer {
+  border-color: rgba(6, 47, 82, 0.3);
+}
+
+// The upload board and sign-in art sit on a dark "screen", like the device in the design.
+#{$r} .board,
+#{$r} .welcome-board {
+  background:
+    linear-gradient(rgba(82, 192, 202, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(82, 192, 202, 0.16) 1px, transparent 1px),
+    var(--screen);
+  background-size: 25px 25px;
+  border: 4px solid var(--ink);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 0 0 6px #178ca2,
+    inset 0 0 0 9px var(--ink),
+    9px 10px 0 rgba(6, 47, 82, 0.28);
+}
+#{$r} .board.is-dragging {
+  background: var(--purple);
+}
+#{$r} .board {
+  h2 {
+    color: var(--white);
+    text-shadow: 3px 3px 0 #051f3a;
+  }
+  .eyebrow {
+    color: var(--yellow);
+  }
+  .muted,
+  .hint {
+    color: var(--screen-muted);
+  }
+  .types span {
+    background: #0c6c88;
+    border: 1px solid var(--mint);
+    border-radius: 3px;
+    color: var(--screen-text);
+  }
+}
+#{$r} .board-label,
+#{$r} .privacy {
+  background: var(--sky);
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  box-shadow: 2px 2px 0 var(--ink);
+  color: var(--ink);
+}
+#{$r} .live-dot {
+  background: var(--yellow);
+  box-shadow: none;
+}
+#{$r} app-machine-art {
+  .machine {
+    border: 4px solid var(--ink);
+    border-radius: 18px;
+    box-shadow: 8px 9px 0 #031e36;
+  }
+  .slot {
+    border: 2px solid #5ce2d6;
+    height: 10px;
+  }
+  .screen {
+    background:
+      linear-gradient(rgba(82, 192, 202, 0.14) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(82, 192, 202, 0.14) 1px, transparent 1px),
+      var(--screen);
+    background-size: 12px 12px;
+    border: 3px solid var(--ink);
+    border-radius: 7px;
+    box-shadow: inset 0 0 0 3px #0a7891;
+    color: var(--yellow);
+  }
+  .controls span {
+    background: var(--orange);
+    border-radius: 4px;
+  }
+  .controls span:nth-child(2) {
+    background: var(--yellow);
+  }
+  .controls span:nth-child(3) {
+    background: var(--mint);
+  }
+  .paper {
+    border: 3px solid var(--ink);
+    border-radius: 5px;
+    box-shadow: 4px 5px 0 #031e36;
+  }
+  .paper--left {
+    background: var(--orange-soft);
+  }
+  .orbit {
+    border-color: rgba(117, 213, 174, 0.65);
+  }
+}
+
+// ---------- Pages ----------
+#{$r} .pill,
+#{$r} .progress {
+  background: var(--yellow);
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  box-shadow: 4px 4px 0 var(--ink);
+  color: var(--ink);
+}
+#{$r} .ring {
+  background: conic-gradient(var(--orange) var(--done), #f8edb5 0);
+}
+#{$r} .ring::after {
+  background: var(--yellow);
+}
+#{$r} .stats {
+  background: var(--sky);
+}
+#{$r} .stat em {
+  color: var(--ink);
+  text-decoration: underline;
+}
+#{$r} .stat--link:hover {
+  background: var(--yellow);
+}
+#{$r} .segmented {
+  background: #096a83;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  button {
+    border-radius: 3px;
+    color: var(--screen-text);
+    font-family: var(--mono);
+    text-transform: uppercase;
+  }
+  button[aria-pressed='true'],
+  a.on {
+    background: var(--yellow);
+    box-shadow: inset 0 -2px 0 rgba(107, 79, 20, 0.18);
+    color: var(--ink);
+  }
+  // Settings tabs are links: same look, readable on hover.
+  a {
+    color: var(--screen-text);
+    font-family: var(--mono);
+    &:hover:not(.on) {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--white);
+    }
+  }
+}
+#{$r} .queue {
+  background: #7fd6d3;
+}
+#{$r} .nudge {
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+}
+// The original sits on the dark screen, as in the review workstation.
+#{$r} .preview {
+  background:
+    linear-gradient(rgba(82, 192, 202, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(82, 192, 202, 0.16) 1px, transparent 1px),
+    var(--screen);
+  background-size: 22px 22px;
+}
+#{$r} .preview-cap {
+  align-self: stretch;
+}
+#{$r} .preview .tag {
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+#{$r} .review {
+  overflow: visible;
+}
+#{$r} .viewer {
+  border: 2px solid var(--ink);
+  box-shadow: 8px 9px 0 #031e36;
+}
+#{$r} app-document-viewer .controls {
+  background: var(--screen);
+  .zoom,
+  .pages {
+    font-family: var(--mono);
+  }
+  .pages {
+    color: var(--screen-text);
+  }
+}
+#{$r} .ai-note {
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+}
+#{$r} .total {
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--hard);
+}
+#{$r} .mascot {
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+}
+#{$r} .totals div,
+#{$r} .figures > div,
+#{$r} .facts div,
+#{$r} .files li,
+#{$r} .user,
+#{$r} .links a,
+#{$r} .file {
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+}
+#{$r} .strip {
+  background: var(--orange);
+  border: 3px solid var(--ink);
+  border-radius: 9px;
+  box-shadow: 6px 7px 0 var(--ink);
+}
+#{$r} .latest {
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  &:hover {
+    background: var(--yellow);
+  }
+}
+#{$r} .switch {
+  background: #096a83;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  button {
+    color: var(--screen-text);
+    font-family: var(--mono);
+    text-transform: uppercase;
+  }
+  button[aria-pressed='true'] {
+    background: var(--yellow);
+    color: var(--ink);
+  }
+}
+
+// Phones: the bottom tab bar becomes the device's control strip.
+@media (max-width: 960px) {
+  #{$r} .tabs {
+    background: #096a83;
+    border-radius: 0;
+    border-width: 3px 0 0;
+    box-shadow: 0 -5px 0 rgba(6, 47, 82, 0.14);
+  }
+}

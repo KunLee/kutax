@@ -1,0 +1,23 @@
+# Files uploaded to Cloud Build (scripts/Deploy-CloudRun.ps1). Never send local credentials or build output.
+.gcloudignore
+.git
+.github
+**/node_modules
+**/.angular
+**/dist
+**/bin
+**/obj
+**/*.env
+**/.env
+**/*.user
+**/*.pfx
+**/*.pem
+**/TestResults
+**/test-results
+artifacts
+**/artifacts
+.playwright-cli
+output
+docs
+# Local database backups (scripts/Start-Local.ps1): they contain records.
+infra/backups

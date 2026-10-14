@@ -1,0 +1,131 @@
+<section class="page" aria-labelledby="users-title">
+  <div class="page-heading">
+    <div>
+      <span class="eyebrow">{{ 'Administration' | t }}</span>
+      <h1 id="users-title">{{ 'User management' | t }}</h1>
+      <p>{{ 'Manage access to this private workspace. Share temporary passwords through a private channel.' | t }}</p>
+    </div>
+  </div>
+  @if (error()) {
+    <p class="notice notice--error" role="alert">{{ error() | t }}</p>
+  }
+  @if (notice()) {
+    <p class="notice notice--success" role="status">{{ notice() | t: noticeParams() }}</p>
+  }
+  <div class="card">
+    <form class="search" role="search" (ngSubmit)="load()">
+      <label class="sr-only" for="user-search">{{ 'Find an account' | t }}</label>
+      <input class="input" id="user-search" name="search" type="search" maxlength="100" [placeholder]="'Find by name or email' | t" [(ngModel)]="search" [disabled]="busy()" />
+      <button class="btn" type="submit" [disabled]="busy()">{{ 'Search' | t }}</button>
+    </form>
+    <ul class="users" [attr.aria-busy]="busy()" [attr.aria-label]="'Workspace accounts' | t">
+      @for (user of result().items; track user.id) {
+        <li class="user">
+          <span class="thumb" [class]="user.isAdministrator ? 'tone-purple' : user.isEnabled ? 'tone-mint' : 'tone-yellow'"><app-icon name="users" /></span>
+          <span class="user-copy"><strong>{{ user.displayName || ('Name not set' | t) }}</strong><small>{{ user.email }}@if (known(user.createdAt)) { · {{ 'joined {date}' | t: { date: (user.createdAt | date: ('d MMM yyyy' | t)) } }} }</small>
+            @if (user.note) { <span class="user-note"><app-icon name="file" [size]="14" />{{ user.note }}</span> }</span>
+          @if (isSelf(user)) {
+            <a class="small" routerLink="/settings">{{ 'Change your own details in personal settings' | t }}</a>
+          } @else {
+            <div class="row user-actions">
+              <button class="btn btn--small" type="button" (click)="openPanel(user, 'note')" [disabled]="busy()" [attr.aria-expanded]="isOpen(user, 'note')" [attr.aria-label]="('Note about {email}' | t: { email: user.email })">{{ (user.note ? 'Edit note' : 'Add note') | t }}</button>
+              <button class="btn btn--small" type="button" (click)="openPanel(user, 'admin')" [disabled]="busy()" [attr.aria-expanded]="isOpen(user, 'admin')">{{ (user.isAdministrator ? 'Remove administrator' : 'Make administrator') | t }}</button>
+              <button class="btn btn--small" type="button" (click)="openPanel(user, 'reset')" [disabled]="busy()" [attr.aria-expanded]="isOpen(user, 'reset')" [attr.aria-label]="('Reset password for {email}' | t: { email: user.email })">{{ 'Reset password' | t }}</button>
+              @if (user.isLockedOut) {
+                <button class="btn btn--small" type="button" (click)="unlock(user)" [disabled]="busy()" [attr.aria-label]="'Unlock ' + user.email">{{ 'Unlock' | t }}</button>
+              }
+              <button class="btn btn--small" type="button" (click)="setEnabled(user, !user.isEnabled)" [disabled]="busy()" [attr.aria-busy]="working() === user.id + ':enable'" [attr.aria-label]="((user.isEnabled ? 'Disable {email}' : 'Enable {email}') | t: { email: user.email })">{{ user.isEnabled ? ('Disable' | t) : ('Enable' | t) }}</button>
+              <button class="btn btn--small btn--danger" type="button" (click)="openPanel(user, 'delete')" [disabled]="busy()" [attr.aria-expanded]="isOpen(user, 'delete')" [attr.aria-label]="('Delete {email}' | t: { email: user.email })">{{ 'Delete' | t }}</button>
+            </div>
+          }
+          <span class="user-tags">
+            @if (isSelf(user)) { <span class="chip chip--info">{{ 'You' | t }}</span> }
+            @if (user.isAdministrator) { <span class="chip chip--purple">{{ 'Administrator' | t }}</span> }
+            <span class="chip" [class.chip--done]="user.isEnabled">{{ user.isEnabled ? ('Enabled' | t) : ('Disabled' | t) }}</span>
+            @if (user.isLockedOut) { <span class="chip chip--review">{{ 'Locked' | t }}</span> }
+            @if (user.mustChangePassword) { <span class="chip chip--info">{{ 'Password change required' | t }}</span> }
+          </span>
+          @if (isOpen(user, 'note')) {
+            <form class="user-panel" (ngSubmit)="saveNote(user)">
+              <label class="field" for="user-note">{{ 'Private note about {email}' | t: { email: user.email } }}</label>
+              <textarea class="input" id="user-note" name="note" rows="3" maxlength="1000" [placeholder]="'Only administrators see this. For example: family member, joined for FY2025' | t" [(ngModel)]="note" [disabled]="busy()"></textarea>
+              <div class="row">
+                <button class="btn btn--primary btn--small" type="submit" [disabled]="busy()" [attr.aria-busy]="working() === user.id + ':note'">{{ 'Save note' | t }}</button>
+                <button class="btn btn--quiet btn--small" type="button" (click)="closePanel()">{{ 'Cancel' | t }}</button>
+              </div>
+            </form>
+          }
+          @if (isOpen(user, 'admin')) {
+            <div class="user-panel" role="group">
+              <p class="small">@if (user.isAdministrator) { <strong>{{ 'Remove administrator access from {email}?' | t: { email: user.email } }}</strong> {{ 'They keep their own records but can no longer manage accounts, AI or tax rules.' | t }} }
+                @else { <strong>{{ 'Make {email} an administrator?' | t: { email: user.email } }}</strong> {{ 'They can manage accounts (including yours), AI reading and tax rules. They can’t see anyone’s tax records unless those are shared with them.' | t }} }
+                {{ 'They’ll be signed out to apply the change.' | t }}</p>
+              <div class="row">
+                <button class="btn btn--small" [class.btn--primary]="!user.isAdministrator" [class.btn--danger]="user.isAdministrator" type="button" (click)="setAdministrator(user, !user.isAdministrator)" [disabled]="busy()" [attr.aria-busy]="working() === user.id + ':admin'">{{ (user.isAdministrator ? 'Yes, remove' : 'Yes, make administrator') | t }}</button>
+                <button class="btn btn--quiet btn--small" type="button" (click)="closePanel()">{{ 'Cancel' | t }}</button>
+              </div>
+            </div>
+          }
+          @if (isOpen(user, 'reset')) {
+            <form class="user-panel" (ngSubmit)="reset(user)" #resetForm="ngForm">
+              <p class="small">{{ 'Give {email} a temporary password. They must change it when they sign in, and their other sessions are signed out.' | t: { email: user.email } }}</p>
+              <label class="field" for="reset-password">{{ 'New temporary password' | t }}</label>
+              <div class="row">
+                <input class="input" id="reset-password" name="resetPassword" type="text" required minlength="12" maxlength="1024" autocomplete="off" spellcheck="false" [(ngModel)]="resetPassword" [disabled]="busy()" />
+                <button class="btn btn--small" type="button" (click)="copyPassword()" [disabled]="busy()">{{ 'Copy' | t }}</button>
+                <button class="btn btn--small btn--quiet" type="button" (click)="resetPassword = generatePassword()" [disabled]="busy()">{{ 'New one' | t }}</button>
+              </div>
+              <div class="row">
+                <button class="btn btn--primary btn--small" type="submit" [disabled]="resetForm.invalid || busy()" [attr.aria-busy]="working() === user.id + ':reset'">{{ 'Reset password' | t }}</button>
+                <button class="btn btn--quiet btn--small" type="button" (click)="closePanel()">{{ 'Cancel' | t }}</button>
+              </div>
+            </form>
+          }
+          @if (isOpen(user, 'delete')) {
+            <div class="user-panel danger" role="group" [attr.aria-label]="('Delete {email}' | t: { email: user.email })">
+              @if (user.hasRecords) {
+                <p class="small">{{ 'This account has receipts or tax packs, so it can’t be deleted. Disable it instead: they can’t sign in, and their records are kept.' | t }}</p>
+                <div class="row">
+                  @if (user.isEnabled) { <button class="btn btn--small" type="button" (click)="setEnabled(user, false)" [disabled]="busy()" [attr.aria-busy]="working() === user.id + ':enable'">{{ 'Disable' | t }}</button> }
+                  <button class="btn btn--quiet btn--small" type="button" (click)="closePanel()">{{ 'Cancel' | t }}</button>
+                </div>
+              } @else {
+                <p class="small"><strong>{{ 'Delete {email} permanently?' | t: { email: user.email } }}</strong> {{ 'The account has no receipts or tax packs. This can’t be undone.' | t }}</p>
+                <div class="row">
+                  <button class="btn btn--small btn--danger" type="button" (click)="remove(user)" [disabled]="busy()" [attr.aria-busy]="working() === user.id + ':delete'">{{ 'Delete permanently' | t }}</button>
+                  <button class="btn btn--quiet btn--small" type="button" (click)="closePanel()">{{ 'Keep it' | t }}</button>
+                </div>
+              }
+            </div>
+          }
+        </li>
+      } @empty {
+        <li class="empty">{{ busy() ? ('Loading accounts…' | t) : ('No accounts found.' | t) }}</li>
+      }
+    </ul>
+    <div class="pagination">
+      <span class="muted small">{{ '{n} accounts · page {page}' | t: { n: result().total, page: result().page } }}</span>
+      <div class="row">
+        <button class="btn btn--small" type="button" (click)="load(result().page - 1)" [disabled]="busy() || result().page <= 1">{{ 'Previous' | t }}</button>
+        <button class="btn btn--small" type="button" (click)="load(result().page + 1)" [disabled]="busy() || result().page * result().pageSize >= result().total">{{ 'Next' | t }}</button>
+      </div>
+    </div>
+  </div>
+  <div class="form-grid section">
+    <form id="account-form" class="card" (ngSubmit)="save()" #accountForm="ngForm">
+      <h2>{{ 'Create account' | t }}</h2>
+      <p class="muted small">{{ 'People can also register themselves, or join through a sharing invitation. After that, their name and email are theirs to change.' | t }}</p>
+      <label class="field" for="user-name">{{ 'Name' | t }}</label>
+      <input class="input" id="user-name" name="displayName" maxlength="100" autocomplete="off" [(ngModel)]="displayName" [disabled]="busy()" />
+      <label class="field" for="user-email">{{ 'Email address' | t }}</label>
+      <input class="input" id="user-email" name="email" type="email" inputmode="email" required email maxlength="254" autocomplete="off" [(ngModel)]="email" [disabled]="busy()" />
+      <label class="field" for="temporary-password">{{ 'Temporary password' | t }}</label>
+        <div class="row">
+          <input class="input" id="temporary-password" name="temporaryPassword" type="text" required minlength="12" maxlength="1024" autocomplete="off" spellcheck="false" [(ngModel)]="temporaryPassword" [disabled]="busy()" />
+          <button class="btn btn--small btn--quiet" type="button" (click)="temporaryPassword = generatePassword()" [disabled]="busy()">{{ 'New one' | t }}</button>
+        </div>
+        <p class="muted small">{{ 'At least 12 characters with uppercase, lowercase, a number and a symbol. The user must change it before opening the workspace.' | t }}</p>
+      <button class="btn btn--primary" type="submit" [disabled]="accountForm.invalid || busy()" [attr.aria-busy]="working() === 'form'">{{ 'Create account' | t }}</button>
+    </form>
+  </div>
+</section>

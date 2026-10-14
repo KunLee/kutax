@@ -1,0 +1,198 @@
+<a class="skip-link" href="#main">{{ 'Skip to content' | t }}</a>
+@if (loading()) {
+  <div class="splash" role="status"><span class="brand-mark" aria-hidden="true"><span></span><span></span></span>{{ 'Opening your workspace…' | t }}</div>
+} @else if (account(); as user) {
+  @if (sharing.acting(); as acting) {
+    <div class="acting-bar" role="status">
+      <app-icon name="users" [size]="18" />
+      <span>{{ 'You’re working on the tax records of {name}' | t: { name: acting.name || acting.email } }}</span>
+      <button type="button" (click)="sharing.switchTo(null)">{{ 'Back to my own' | t }}</button>
+    </div>
+  }
+  <header class="header">
+    <a class="brand" routerLink="/" [attr.aria-label]="'KuTax home' | t">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span></span>
+      <span class="brand-name">KuTax</span><span class="brand-spark" aria-hidden="true">✦</span>
+    </a>
+    @if (!user.mustChangePassword) {
+      <nav class="tabs" [attr.aria-label]="'Main' | t">
+        <a routerLink="/" routerLinkActive="is-active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">
+          <app-icon name="home" /><span>{{ 'Home' | t }}</span>
+        </a>
+        <a routerLink="/review" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+          <app-icon name="file" /><span>{{ 'Receipts' | t }}</span>
+          @if (session.counts()?.needsReview; as waiting) {
+            <span class="badge"><span class="sr-only">, </span>{{ waiting }}<span class="sr-only"> {{ 'waiting' | t }}</span></span>
+          }
+        </a>
+        <a routerLink="/summary" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+          <app-icon name="report" /><span>{{ 'Tax' | t }}</span>
+        </a>
+        <a routerLink="/history" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+          <app-icon name="archive" /><span>{{ 'History' | t }}</span>
+        </a>
+      </nav>
+    }
+    <div class="tools">
+      @if (session.counts()?.processing; as reading) {
+        <a class="reading-pill" routerLink="/review" [attr.aria-label]="'Reading ' + reading + ' receipts. Open the review queue.'">
+          <span class="spinner" aria-hidden="true"></span><span class="reading-text">{{ 'Reading {n}' | t: { n: reading } }}</span>
+        </a>
+      }
+      @if (!user.mustChangePassword) {
+        <app-year-picker (changed)="selectYear($event)" />
+      }
+      <div class="account">
+        <button class="avatar" type="button" [attr.aria-expanded]="menuOpen()" aria-controls="account-menu" [attr.aria-label]="'Account menu' | t" (click)="menuOpen.set(!menuOpen())">
+          @if (user.avatarUrl) { <img class="avatar-photo" [src]="user.avatarUrl" alt="" /> } @else { {{ session.initials() }} }
+          @if (session.storageReady()) { <span class="status-dot" aria-hidden="true"></span> }
+        </button>
+        @if (menuOpen()) {
+          <nav id="account-menu" class="menu" [attr.aria-label]="'Account' | t">
+            <div class="menu-head">
+              <strong>{{ user.displayName || ('Your account' | t) }}</strong><small>{{ user.email }}</small>
+            </div>
+            @if (!user.mustChangePassword && sharing.state()?.incoming?.length) {
+              <div class="menu-section" role="group" [attr.aria-label]="'Whose tax records' | t">
+                <small>{{ 'Whose tax records' | t }}</small>
+                <button type="button" [class.current]="!sharing.acting()" [attr.aria-current]="!sharing.acting() || null" (click)="sharing.acting() && sharing.switchTo(null)"><app-icon name="home" />{{ 'My own' | t }}</button>
+                @for (shared of sharing.state()!.incoming; track shared.id) {
+                  <button type="button" [class.current]="sharing.acting()?.ownerId === shared.ownerId" [attr.aria-current]="sharing.acting()?.ownerId === shared.ownerId || null"
+                          (click)="sharing.acting()?.ownerId !== shared.ownerId && sharing.switchTo({ ownerId: shared.ownerId, name: shared.person?.name ?? '', email: shared.person?.email ?? '' })">
+                    <app-icon name="users" />{{ shared.person?.name || shared.person?.email }}</button>
+                }
+              </div>
+            }
+            @if (!user.mustChangePassword) {
+              <a routerLink="/reports"><app-icon name="report" />{{ 'Reports' | t }}</a>
+              <a routerLink="/settings"><app-icon name="settings" />{{ 'Personal settings' | t }}</a>
+              <a routerLink="/help"><app-icon name="help" />{{ 'Help' | t }}</a>
+              @if (user.isAdministrator) {
+                <a routerLink="/users"><app-icon name="users" />{{ 'Users' | t }}</a>
+              }
+            }
+            <button type="button" (click)="i18n.set(i18n.language() === 'zh' ? 'en' : 'zh')" [attr.lang]="i18n.language() === 'zh' ? 'en-AU' : 'zh-CN'"><span class="lang-mark" aria-hidden="true">{{ i18n.language() === 'zh' ? 'EN' : '中' }}</span>{{ i18n.language() === 'zh' ? 'English' : '切换到中文' }}</button>
+            <button type="button" (click)="theme.set(theme.current() === 'retro' ? 'classic' : 'retro')"><app-icon name="spark" />{{ theme.current() === 'retro' ? ('Switch to Classic look' | t) : ('Switch to Retro look' | t) }}</button>
+            <button type="button" (click)="signOut()" [disabled]="busy()"><app-icon name="logout" />{{ 'Sign out' | t }}</button>
+            <p class="storage" role="status">
+              @switch (session.storageReady()) {
+                @case (true) { <app-icon name="shield" [size]="16" /> {{ 'Private storage connected' | t }} }
+                @case (false) { <app-icon name="warning" [size]="16" /> {{ 'Storage setup needs attention' | t }} }
+                @default { {{ 'Checking private storage…' | t }} }
+              }
+            </p>
+          </nav>
+        }
+      </div>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    @if (error()) {
+      <div class="page-message"><p class="notice notice--error" role="alert">{{ error() | t }}</p></div>
+    }
+    <p class="sr-only" role="status">{{ notice() | t }}</p>
+    @if (!user.mustChangePassword) {
+      @for (invitation of sharing.state()?.invitations ?? []; track invitation.id) {
+        <div class="page-message"><div class="invite-bar" role="status">
+          <app-icon name="users" />
+          <span><strong>{{ '{name} invited you to help with their tax records' | t: { name: invitation.person?.name || invitation.person?.email } }}</strong>
+            @if (!invitation.canAcceptHere) { <small>{{ 'Open the link in the invitation email to accept it.' | t }}</small> }</span>
+          @if (invitation.canAcceptHere) {
+            <button class="btn btn--small btn--primary" type="button" (click)="acceptInvitation(invitation)" [disabled]="busy()">{{ 'Accept' | t }}</button>
+          }
+          <button class="btn btn--small btn--quiet" type="button" (click)="declineInvitation(invitation.id)" [disabled]="busy()">{{ 'Decline' | t }}</button>
+        </div></div>
+      }
+    }
+    @if (user.mustChangePassword) {
+      <app-account-settings [account]="user" (saved)="accountUpdated($event)" />
+    } @else {
+      <router-outlet />
+      <app-toast />
+    }
+  </main>
+  <footer class="footer">
+    <span>{{ 'KuTax keeps your documents in private storage, served only to your account.' | t }}</span>
+    <span><a routerLink="/help">{{ 'Help' | t }}</a> {{ '· Preparation only · KuTax never lodges your return.' | t }}</span>
+  </footer>
+} @else {
+  <main id="main" class="welcome" [class.has-invite]="invite()">
+    <section class="welcome-board" aria-hidden="true">
+      <span class="board-label"><span class="live-dot"></span>{{ 'Smart receipt inbox' | t }}</span>
+      <app-machine-art />
+    </section>
+    <section class="welcome-copy">
+      <span class="eyebrow">{{ 'Drop it. Done.' | t }}</span>
+      <h1>{{ 'Your receipts have a happy place.' | t }}</h1>
+      <p class="muted">{{ 'Send them in as you go. KuTax reads, sorts and keeps them ready for tax time — you stay in control of every claim.' | t }}</p>
+    </section>
+    <section class="signin card card--bold" aria-labelledby="signin-title">
+      @if (invite(); as info) {
+        <div class="invite-bar invite-bar--welcome" role="status">
+          <app-icon name="users" />
+          <span><strong>{{ '{name} invited you to help with their tax records' | t: { name: info.from?.name || info.from?.email } }}</strong>
+            <small>{{ info.state === 'Pending' ? ('Sign in or create an account with {email} to accept.' | t: { email: info.email }) : ('This invitation has expired or was already used. Ask {name} for a new one.' | t: { name: info.from?.name || info.from?.email }) }}</small></span>
+        </div>
+      }
+      @if (session.registrationEnabled() || invite()) {
+        <div class="switch" role="group" [attr.aria-label]="'Account' | t">
+          <button type="button" [attr.aria-pressed]="mode() === 'signin'" (click)="switchMode('signin')">{{ 'Sign in' | t }}</button>
+          <button type="button" [attr.aria-pressed]="mode() === 'register'" (click)="switchMode('register')">{{ 'Create account' | t }}</button>
+        </div>
+      }
+      @if (mode() === 'signin' || !(session.registrationEnabled() || invite())) {
+        <h2 id="signin-title">{{ 'Welcome to KuTax' | t }}</h2>
+        <p class="muted small">{{ 'Sign in to your personal workspace.' | t }}</p>
+        <form (ngSubmit)="signIn()" #form="ngForm">
+          <label class="field">{{ 'Email address' | t }}
+            <input id="email" name="email" type="email" autocomplete="username" inputmode="email" required email [(ngModel)]="email" [disabled]="busy()" />
+          </label>
+          <label class="field">{{ 'Password' | t }}
+            <input id="password" name="password" type="password" autocomplete="current-password" required [(ngModel)]="password" [disabled]="busy()" />
+          </label>
+          @if (error()) {
+            <p class="notice notice--error" role="alert">{{ error() | t }}</p>
+          }
+          <button class="btn btn--primary btn--block" type="submit" [disabled]="form.invalid || busy()">
+            {{ busy() ? ('Signing in…' | t) : ('Sign in' | t) }}<app-icon name="arrow" [size]="18" />
+          </button>
+        </form>
+        <p class="muted small signin-note"><app-icon name="shield" [size]="16" />
+          @if (session.registrationEnabled() || invite()) { {{ 'New here?' | t }} <button class="link" type="button" (click)="switchMode('register')">{{ 'Create a free account' | t }}</button> }
+          @else { {{ 'Personal access only. Your administrator creates accounts.' | t }} }
+        </p>
+      } @else {
+        <h2 id="signin-title">{{ 'Create your account' | t }}</h2>
+        <p class="muted small">{{ 'Your own private workspace for receipts and tax-time records.' | t }}</p>
+        <form (ngSubmit)="register()" #registerForm="ngForm">
+          <label class="field">{{ 'Your name' | t }}
+            <input id="register-name" name="displayName" autocomplete="name" required maxlength="100" [(ngModel)]="displayName" [disabled]="busy()" />
+          </label>
+          <label class="field">{{ 'Email address' | t }}
+            <input id="register-email" name="email" type="email" autocomplete="email" inputmode="email" required email maxlength="254" [(ngModel)]="email" [disabled]="busy()" />
+          </label>
+          <label class="field">{{ 'Password' | t }}
+            <input id="register-password" name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="1024" aria-describedby="password-rules" [(ngModel)]="password" [disabled]="busy()" />
+          </label>
+          <p class="muted small rules" id="password-rules">{{ 'At least 12 characters with uppercase, lowercase, a number and a symbol.' | t }}</p>
+          <label class="field">{{ 'Confirm password' | t }}
+            <input id="register-confirm" name="confirmPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="1024" [(ngModel)]="confirmPassword" [disabled]="busy()" />
+          </label>
+          <label class="check"><input name="acknowledged" type="checkbox" required [(ngModel)]="acknowledged" [disabled]="busy()" />
+            <span>{{ 'I understand KuTax helps me organise records and prepare figures. It doesn’t give tax advice or lodge my return, and I check everything before using it.' | t }}</span></label>
+          @if (mismatch()) {
+            <p class="notice notice--error" role="alert">{{ 'The passwords don’t match.' | t }}</p>
+          } @else if (error()) {
+            <p class="notice notice--error" role="alert">{{ error() | t }}</p>
+          }
+          <button class="btn btn--primary btn--block" type="submit" [disabled]="registerForm.invalid || busy()">
+            {{ busy() ? ('Creating your account…' | t) : ('Create account' | t) }}<app-icon name="arrow" [size]="18" />
+          </button>
+        </form>
+        <p class="muted small signin-note"><app-icon name="shield" [size]="16" />
+          {{ 'Already have an account?' | t }} <button class="link" type="button" (click)="switchMode('signin')">{{ 'Sign in' | t }}</button></p>
+      }
+    </section>
+  </main>
+}

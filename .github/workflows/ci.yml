@@ -1,0 +1,83 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v6.0.0
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Use the pinned stable npm release
+        run: npm install --global npm@12.2.0 --no-fund --no-audit
+      - name: Restore and test backend
+        run: |
+          dotnet tool restore
+          dotnet restore backend/KuTax.sln --locked-mode
+          dotnet test --solution backend/KuTax.sln -c Release --no-restore
+          dotnet ef migrations has-pending-model-changes --project backend/KuTax.Infrastructure --startup-project backend/KuTax.Api
+      - name: Build and test frontend
+        working-directory: frontend
+        run: |
+          npm ci --no-fund --no-audit
+          npm run build
+          npm test
+      - name: Generate ephemeral service credentials
+        shell: bash
+        run: |
+          postgres_password="$(openssl rand -hex 24)"
+          storage_key="$(openssl rand -hex 12)"
+          storage_secret="$(openssl rand -hex 24)"
+          seed_password="$(openssl rand -hex 24)Aa1!"
+          for secret in "$postgres_password" "$storage_key" "$storage_secret" "$seed_password"; do
+            echo "::add-mask::$secret"
+          done
+          {
+            echo "POSTGRES_PASSWORD=$postgres_password"
+            echo "RUSTFS_ACCESS_KEY=$storage_key"
+            echo "RUSTFS_SECRET_KEY=$storage_secret"
+            echo "DEVELOPMENT_SEED_PASSWORD=$seed_password"
+          } > infra/.env
+          {
+            echo "ConnectionStrings__Database=Host=localhost;Database=kutax;Username=kutax;Password=$postgres_password"
+            echo "Storage__AccessKey=$storage_key"
+            echo "Storage__SecretKey=$storage_secret"
+            echo "Storage__Endpoint=http://localhost:9000"
+            echo "KUTAX_INTEGRATION=1"
+          } >> "$GITHUB_ENV"
+      - name: Start PostgreSQL, RustFS and ClamAV
+        run: docker compose -f infra/compose.yaml up -d --wait postgres rustfs clamav
+      - name: Verify isolated durable workers, claims, exports and quarantine against real services
+        run: dotnet test --project backend/tests/KuTax.IntegrationTests/KuTax.IntegrationTests.csproj -c Release --no-build
+      - name: Build and smoke-test the single app image
+        run: |
+          docker compose -f infra/compose.yaml --profile app build app
+          docker compose -f infra/compose.yaml --profile app run --rm app --migrate --initialise-storage --seed-development
+          docker compose -f infra/compose.yaml --profile app up -d app
+          curl --fail --retry 15 --retry-all-errors --retry-delay 2 http://localhost:5080/api/health/ready
+          curl --fail http://localhost:5080/ | grep -q '<app-root>'
+          curl --fail http://localhost:5080/workspace | grep -q '<app-root>'
+          test "$(curl --silent -o /dev/null -w '%{http_code}' http://localhost:5080/api/unknown)" = '404'
+      - name: Verify PostgreSQL, private storage and user lifecycle through the running image
+        env:
+          KUTAX_APP_URL: http://localhost:5080
+        run: dotnet test --project backend/tests/KuTax.IntegrationTests/KuTax.IntegrationTests.csproj -c Release --no-build
+      - name: Verify authentication and persistence through the running image
+        shell: pwsh
+        run: ./scripts/Test-Application.ps1
+      - name: Stop services
+        if: always()
+        run: docker compose -f infra/compose.yaml --profile app down --volumes

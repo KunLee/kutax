@@ -1,0 +1,113 @@
+:host {
+  display: block;
+}
+.form-grid {
+  align-items: start;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.form-grid .card > .btn {
+  margin-top: 6px;
+}
+.form-grid .input {
+  margin: -8px 0 14px;
+}
+h2 {
+  margin-top: 4px;
+}
+.search {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 16px;
+  max-width: 620px;
+  .input {
+    flex: 1;
+  }
+}
+.users {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.user {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  display: grid;
+  gap: 8px 14px;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  padding: 12px;
+}
+.user-copy {
+  min-width: 0;
+  strong,
+  small {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+  small {
+    color: var(--ink-soft);
+    font-size: 13px;
+    margin-top: 2px;
+  }
+}
+.user-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  grid-column: 2 / -1;
+}
+.pagination {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+@media (max-width: 700px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .user {
+    grid-template-columns: 44px minmax(0, 1fr);
+    > .row,
+    > .muted {
+      grid-column: 1 / -1;
+    }
+  }
+  .user-tags {
+    grid-column: 1 / -1;
+  }
+}
+.user-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+// The reset or delete step opens inside the account's row, under its details.
+.user-panel {
+  background: var(--yellow-soft);
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+  padding: 12px;
+  p { margin: 0; }
+  .row input { flex: 1; font-family: var(--mono); min-width: 0; }
+  &.danger { background: var(--orange-soft); }
+}
+
+.photo-row { align-items: center; display: flex; gap: 14px; margin: 6px 0 4px; }
+.photo { align-items: center; background: var(--yellow); border: 2px solid var(--ink); border-radius: 50%; display: flex; flex: none; font-size: 22px; font-weight: 800; height: 72px; justify-content: center; overflow: hidden; width: 72px; }
+.photo img { height: 100%; object-fit: cover; width: 100%; }
+.photo-copy { display: grid; gap: 6px; min-width: 0; }
+.photo-copy strong { overflow-wrap: anywhere; }
+.photo-copy small { font-size: 12px; }
+.photo-copy label.btn { cursor: pointer; }
+.optional { color: var(--ink-soft); font-weight: 600; }
+.user-note { align-items: flex-start; background: var(--yellow-soft); border-radius: 8px; color: var(--ink); display: flex; font-size: 12px; gap: 6px; margin-top: 6px; padding: 4px 8px; white-space: pre-line; }
+.user-note app-icon { flex: none; margin-top: 1px; }

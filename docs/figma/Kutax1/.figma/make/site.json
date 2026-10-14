@@ -1,0 +1,10 @@
+{
+  "description": "Simplify your Australian tax experience with a playful AI assistant that allows easy drag-and-drop uploads of receipts and documents for effortless management.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

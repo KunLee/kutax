@@ -10,6 +10,14 @@
 *.userosscache
 *.sln.docstates
 *.env
+!.env.example
+.angular/
+dist/
+coverage/
+playwright-report/
+test-results/
+.playwright-cli/
+output/playwright/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -426,3 +434,6 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+# Local database backups taken by scripts/Start-Local.ps1 (they contain your records).
+infra/backups/

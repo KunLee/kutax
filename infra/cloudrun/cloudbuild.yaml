@@ -1,0 +1,13 @@
+# Builds both images in Google Cloud Build (no local Docker login needed) and pushes them to Artifact Registry.
+# Run by scripts/Deploy-CloudRun.ps1 with the substitutions below.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "infra/Dockerfile", "-t", "${_APP_IMAGE}", "."]
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "infra/cloudrun/clamav.Dockerfile", "-t", "${_CLAMAV_IMAGE}", "infra/cloudrun"]
+images:
+  - ${_APP_IMAGE}
+  - ${_CLAMAV_IMAGE}
+options:
+  machineType: E2_HIGHCPU_8
+timeout: 1800s

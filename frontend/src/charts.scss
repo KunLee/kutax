@@ -1,0 +1,47 @@
+// Report charts: building-block faces, shading, tooltips and motion (kept global to stay within component budgets).
+app-reports-page {
+    .iso { display: block; height: auto; margin-top: 8px; overflow: visible; width: 100%; }
+    .iso .floor { fill: var(--line); opacity: .55; }
+    .iso .tile { fill: var(--line); stroke: var(--ink); stroke-opacity: .25; stroke-width: 1; }
+    .iso .tick { fill: var(--ink-soft); font-size: 10px; font-weight: 700; }
+    .face { stroke: var(--ink); stroke-linejoin: round; stroke-width: 1.2; }
+    .face.spent { fill: var(--sky); }
+    .face.claimed { fill: var(--mint-ink); }
+    .face.past { fill: var(--sky); }
+    .shade { fill: #000; opacity: .22; pointer-events: none; }
+    .shade.deep { opacity: .38; }
+    .light { fill: #fff; opacity: .32; pointer-events: none; }
+    .col { animation: rise .7s cubic-bezier(.2, .9, .3, 1.15) both; transform-box: fill-box; transform-origin: bottom; transition: transform .2s; }
+    .col.on { transform: translateY(-5px); }
+    .col.on .face.spent { fill: var(--purple); }
+    @keyframes rise { from { opacity: 0; transform: scaleY(.05); } to { opacity: 1; transform: none; } }
+    .ring { height: auto; max-width: 260px; overflow: visible; width: 100%; }
+    .ring-shadow { fill: var(--ink); opacity: .14; }
+    .slice-3d { cursor: pointer; transition: transform .25s; }
+    .slice-3d.lift { transform: translateY(-7px); }
+    .iso--years { max-height: 230px; }
+    .col-value-3d { fill: var(--ink); font-size: 12px; font-weight: 800; text-anchor: middle; }
+    .col-label-3d { fill: var(--ink); font-size: 11px; font-weight: 700; text-anchor: middle; }
+    @media (prefers-reduced-motion: reduce) { .col { animation: none; } .col, .slice-3d { transition: none; } }
+    .plot { position: relative; }
+    .plot--ring { margin: 0 auto; max-width: 260px; width: 100%; }
+    .tip { background: var(--white); border: 2px solid var(--ink); border-radius: 12px; box-shadow: 4px 4px 0 var(--ink); color: var(--ink); display: grid; font-size: 12px; gap: 3px;
+      min-width: 150px; padding: 8px 10px; pointer-events: none; position: absolute; transform: translate(-50%, calc(-100% - 12px)); white-space: nowrap; z-index: 5; animation: tip-in .15s ease-out; }
+    .tip::after { background: var(--white); border: solid var(--ink); border-width: 0 2px 2px 0; bottom: -7px; content: ''; height: 10px; left: calc(50% - 5px); position: absolute; transform: rotate(45deg); width: 10px; }
+    .tip strong { align-items: center; display: flex; font-size: 13px; gap: 6px; }
+    .tip span { align-items: center; display: flex; gap: 6px; }
+    .tip span b { font-variant-numeric: tabular-nums; margin-left: auto; padding-left: 12px; }
+    .tip small { color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+    @keyframes tip-in { from { opacity: 0; transform: translate(-50%, calc(-100% - 6px)); } }
+    .slab { cursor: pointer; margin: 14px 0 12px; }
+    .seg { transition: transform .2s; }
+    .seg.on { transform: translateY(-4px); }
+    .bar3d { display: block; height: 26px; margin: 0; overflow: visible; width: 100%; }
+    .face.merchant { fill: var(--sky); }
+    .face.merchant.first { fill: var(--purple); }
+    .hbars li.on .face.merchant { fill: var(--purple); }
+    .grow-x { animation: grow-x .6s cubic-bezier(.2, .9, .3, 1.1) both; transform-box: fill-box; transform-origin: left; }
+    @keyframes grow-x { from { opacity: 0; transform: scaleX(.05); } }
+    .col.on .face.past, .col.on .face.claimed { fill: var(--purple); }
+    @media (prefers-reduced-motion: reduce) { .grow-x, .tip { animation: none; } .seg { transition: none; } }
+}

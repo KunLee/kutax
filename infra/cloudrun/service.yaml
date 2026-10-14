@@ -1,0 +1,89 @@
+# KuTax on Cloud Run: the app (Angular + API in one image) with ClamAV beside it in the same instance.
+# Scales to zero when nobody is using it. While an instance is up its CPU stays on (instance-based billing), so
+# receipt reading, tax packs and rule drafting keep going between requests; work left queued resumes on the next visit.
+# Placeholders in ${...} are filled by scripts/Deploy-CloudRun.ps1; secrets come from Secret Manager, never this file.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ${SERVICE}
+  labels:
+    cloud.googleapis.com/location: ${REGION}
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        # One instance keeps cost bounded for a personal workspace; queued work uses leases, so more would be safe.
+        autoscaling.knative.dev/maxScale: "1"
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      serviceAccountName: ${SERVICE_ACCOUNT}
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - name: app
+          image: ${APP_IMAGE}
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          # The app doesn't wait for ClamAV: pages open in seconds, and new uploads wait for their scan (fail-closed).
+          startupProbe:
+            httpGet:
+              path: /api/health/live
+              port: 8080
+            periodSeconds: 2
+            failureThreshold: 30
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            - name: PublicOrigin
+              value: ${PUBLIC_ORIGIN}
+            - name: AllowedHosts
+              value: ${PUBLIC_HOST}
+            - name: Production__ManagedServices
+              value: "true"
+            - name: DataProtection__Store
+              value: Database
+            - name: Storage__Endpoint
+              value: ${STORAGE_ENDPOINT}
+            - name: Storage__Bucket
+              value: ${STORAGE_BUCKET}
+            - name: Storage__Region
+              value: auto
+            - name: Scanning__Host
+              value: localhost
+            - name: Registration__Enabled
+              value: "${REGISTRATION_ENABLED}"
+            - name: ConnectionStrings__Database
+              valueFrom:
+                secretKeyRef: { name: kutax-database, key: latest }
+            - name: Storage__AccessKey
+              valueFrom:
+                secretKeyRef: { name: kutax-storage-access-key, key: latest }
+            - name: Storage__SecretKey
+              valueFrom:
+                secretKeyRef: { name: kutax-storage-secret-key, key: latest }
+            - name: DataProtection__CertificateBase64
+              valueFrom:
+                secretKeyRef: { name: kutax-keys-certificate, key: latest }
+            - name: DataProtection__CertificatePassword
+              valueFrom:
+                secretKeyRef: { name: kutax-keys-certificate-password, key: latest }
+            # Sharing invitations by email (optional; without it the app shows the link to send yourself).
+${EMAIL_ENV}
+        - name: clamav
+          image: ${CLAMAV_IMAGE}
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          startupProbe:
+            tcpSocket:
+              port: 3310
+            periodSeconds: 5
+            failureThreshold: 60

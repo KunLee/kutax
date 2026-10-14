@@ -1,0 +1,15 @@
+.git
+**/node_modules
+**/.angular
+**/dist
+**/bin
+**/obj
+**/*.env
+**/*.user
+**/TestResults
+**/test-results
+artifacts
+**/artifacts
+.playwright-cli
+output
+infra/backups

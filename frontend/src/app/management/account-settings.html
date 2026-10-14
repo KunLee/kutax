@@ -1,0 +1,64 @@
+<section [class.page]="!embedded()" [attr.aria-labelledby]="embedded() ? null : 'settings-title'">
+  @if (!embedded()) {
+  <div class="page-heading">
+    <div>
+      <span class="eyebrow">{{ 'Your account' | t }}</span>
+      <h1 id="settings-title">{{ 'Personal settings' | t }}</h1>
+      @if (account().mustChangePassword) {
+        <p>{{ 'Choose a new password to open your workspace. Enter your temporary password as the current password.' | t }}</p>
+      } @else {
+        <p>{{ 'Your name, password and how KuTax may process your receipts.' | t }}</p>
+      }
+    </div>
+  </div>
+  }
+  @if (error()) {
+    <p class="notice notice--error" role="alert">{{ error() | t }}</p>
+  }
+  @if (notice()) {
+    <p class="notice notice--success" role="status">{{ notice() | t }}</p>
+  }
+  <div class="form-grid">
+    @if (!account().mustChangePassword) {
+      <form class="card" (ngSubmit)="saveProfile()" #profile="ngForm">
+        <span class="kicker">{{ 'Profile' | t }}</span>
+        <h2>{{ 'Personal details' | t }}</h2>
+        <div class="photo-row">
+          <span class="photo" aria-hidden="true">
+            @if (account().avatarUrl) { <img [src]="account().avatarUrl" alt="" /> } @else { {{ initials() }} }
+          </span>
+          <div class="photo-copy">
+            <strong>{{ account().email }}</strong>
+            <span class="row">
+              <label class="btn btn--small" [class.is-disabled]="busy()">{{ (account().avatarUrl ? 'Change photo' : 'Add a photo') | t }}
+                <input class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" (change)="pickPhoto($event)" [disabled]="busy()" /></label>
+              @if (account().avatarUrl) { <button class="btn btn--small btn--quiet" type="button" (click)="removePhoto()" [disabled]="busy()">{{ 'Remove' | t }}</button> }
+            </span>
+            <small class="muted">{{ 'Your email is how you sign in, so it can’t be changed. For a different address, register a new account.' | t }}</small>
+          </div>
+        </div>
+        <label class="field" for="display-name">{{ 'Name' | t }}</label>
+        <input class="input" id="display-name" name="displayName" autocomplete="name" maxlength="100" [(ngModel)]="displayName" [disabled]="busy()" />
+        <label class="field" for="phone">{{ 'Mobile number' | t }} <span class="optional">{{ '(optional)' | t }}</span></label>
+        <input class="input" id="phone" name="phoneNumber" type="tel" inputmode="tel" autocomplete="tel" maxlength="30" [placeholder]="'For example 0412 345 678' | t" [(ngModel)]="phoneNumber" [disabled]="busy()" />
+        <label class="field" for="occupation">{{ 'Occupation' | t }} <span class="optional">{{ '(optional)' | t }}</span></label>
+        <input class="input" id="occupation" name="occupation" autocomplete="organization-title" maxlength="100" list="occupations" [placeholder]="'For example nurse, teacher, software engineer' | t" [(ngModel)]="occupation" [disabled]="busy()" />
+        <datalist id="occupations">@for (job of occupations; track job) { <option [value]="job | t"></option> }</datalist>
+        <p class="muted small">{{ 'Your occupation helps you, and anyone helping you, judge which work expenses make sense.' | t }}</p>
+        <button class="btn btn--primary" type="submit" [disabled]="profile.invalid || busy()" [attr.aria-busy]="busy()">{{ 'Save details' | t }}</button>
+      </form>
+    }
+    <form class="card" (ngSubmit)="changePassword()" #passwordForm="ngForm">
+      <span class="kicker">{{ 'Security' | t }}</span>
+      <h2>{{ 'Change password' | t }}</h2>
+      <p class="muted small">{{ 'At least 12 characters, including uppercase, lowercase, a number and a symbol.' | t }}</p>
+      <label class="field" for="current-password">{{ 'Current password' | t }}</label>
+      <input class="input" id="current-password" name="currentPassword" type="password" autocomplete="current-password" required maxlength="1024" [(ngModel)]="currentPassword" [disabled]="busy()" />
+      <label class="field" for="new-password">{{ 'New password' | t }}</label>
+      <input class="input" id="new-password" name="newPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="1024" [(ngModel)]="newPassword" [disabled]="busy()" />
+      <label class="field" for="confirm-password">{{ 'Confirm new password' | t }}</label>
+      <input class="input" id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="1024" [(ngModel)]="confirmPassword" [disabled]="busy()" />
+      <button class="btn btn--primary" type="submit" [disabled]="passwordForm.invalid || busy()">{{ 'Change password' | t }}</button>
+    </form>
+  </div>
+</section>
