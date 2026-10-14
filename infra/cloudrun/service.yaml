@@ -32,9 +32,10 @@ spec:
               cpu: "1"
               memory: 1Gi
           # The app doesn't wait for ClamAV: pages open in seconds, and new uploads wait for their scan (fail-closed).
+          # A TCP check: Cloud Run's HTTP probes don't send the public host name, so host filtering (AllowedHosts)
+          # would answer them 400. Listening on 8080 means startup finished; the deploy then checks /api/health/ready.
           startupProbe:
-            httpGet:
-              path: /api/health/live
+            tcpSocket:
               port: 8080
             periodSeconds: 2
             failureThreshold: 30

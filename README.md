@@ -1,8 +1,45 @@
-# KuTax
+<p align="center">
+  <img src="docs/assets/kutax-banner.svg" alt="KuTax: receipts in, a tax pack out. AI suggests, rules calculate, you approve." width="900">
+</p>
 
-A private-first Australian tax-record and preparation app. Collect receipts, review exceptions and prepare a traceable annual package to help you complete myTax yourself.
+<p align="center">
+  <b>A private-first Australian tax-record and preparation app.</b><br>
+  Drop in your receipts through the year. KuTax reads them, sorts out what you can claim, and prepares a tax pack that shows exactly what to enter in myTax.<br>
+  <sub>English · 中文 &nbsp;|&nbsp; phone and desktop &nbsp;|&nbsp; Angular + ASP.NET Core + PostgreSQL &nbsp;|&nbsp; nothing is lodged with the ATO</sub>
+</p>
 
-**Current scope: M0 foundation plus user management.** Sign-in, an authenticated workspace, saved financial-year selection, administrator account management and personal settings are implemented. Receipt import, AI extraction, tax rules and annual exports are later milestones. Nothing is lodged with the ATO.
+<p align="center">
+  <img src="docs/assets/screenshots/home.png" alt="Home: one next step, the lodging deadline and the receipt inbox" width="880">
+</p>
+
+## What it does
+
+| | |
+|---|---|
+| 📥 **Receipts in, in seconds** | Upload photos, PDFs or a whole folder. Every file is virus-scanned privately, then AI (only if you agree) reads the merchant, date, amount and kind of expense. Foreign currency is converted. Duplicates are flagged. |
+| ✅ **You stay in charge** | AI only suggests. Deterministic, year-specific rules checked against ATO sources calculate each deduction, and nothing counts until you approve it. Anything KuTax can't calculate is kept aside for you or a tax agent. |
+| 📦 **A tax pack for myTax** | A summary, a section-by-section myTax entry guide, a spreadsheet and all the original receipts in one ZIP, in English or Chinese. Every pack is kept, year by year. |
+| 📊 **Reports that find money** | Spending month by month, where your deductions come from, receipts that may be missing from monthly bills, kinds of expense you claimed last year but not yet this year, and a rough "how much less tax". |
+| 👪 **Share with family or a helper** | Invite someone to work on your tax records with you; see what they did and stop sharing any time. |
+| 🔒 **Private by design** | Your own sign-in, files in private storage, CSRF protection and ownership checks on every request. Runs on your machine, or on Cloud Run + Supabase + Cloudflare R2 in Australia. |
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/screenshots/review.png" alt="Checking a receipt beside the original"><br><sub><b>Check a receipt</b> beside the original. Confirm and claim it in one press.</sub></td>
+    <td width="50%"><img src="docs/assets/screenshots/summary.png" alt="Tax summary"><br><sub><b>Tax summary:</b> approved deductions, the mix by kind of expense, and what's still waiting for you.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/assets/screenshots/reports.png" alt="Reports"><br><sub><b>Reports:</b> totals, the tax-saving estimate, missing receipts and last year's claims.</sub></td>
+    <td width="50%"><img src="docs/assets/screenshots/reports-chart.png" alt="3D monthly chart"><br><sub><b>Building-block charts</b> with figures on hover. Choose a month to open its receipts.</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/assets/screenshots/phones.png" alt="KuTax on a phone, in English and Chinese" width="880"><br>
+  <sub>Made for phones first, in English and 中文.</sub>
+</p>
+
+<sub>Screenshots use the synthetic demo account; no real financial records.</sub>
 
 The product baseline is [the architecture handoff](docs/architecture/KUTAX_HANDOFF.md). See [implementation status and outstanding checks](docs/architecture/IMPLEMENTATION.md) and [foundation decisions](docs/adr/0001-foundation.md).
 
@@ -27,7 +64,7 @@ With Podman, start its machine and replace `docker compose` below with `podman c
 
 ```powershell
 ./scripts/Initialize-Development.ps1
-docker compose -f infra/compose.yaml up -d --wait postgres rustfs
+docker compose -f infra/compose.yaml up -d --wait postgres rustfs clamav mailpit
 dotnet tool restore
 dotnet restore backend/KuTax.sln --locked-mode
 dotnet run --project backend/KuTax.Api -- --migrate --initialise-storage --seed-development
