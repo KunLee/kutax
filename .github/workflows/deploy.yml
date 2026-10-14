@@ -1,0 +1,69 @@
+name: Deploy to Cloud Run
+
+# Releases main to production once "Build and test" has passed on it, or when started by hand. No schedule: ClamAV
+# updates its signatures itself whenever an instance starts. Signs in to Google Cloud through Workload Identity
+# Federation (scripts/Setup-GitHubDeploy.ps1): no key is stored in GitHub.
+on:
+  workflow_run:
+    workflows: [Build and test]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# One release at a time; a newer one waits rather than cancelling a deploy halfway.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Only tested pushes to main (not pull requests), and only once the repository has been set up for deploys.
+    if: >-
+      vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: ${{ vars.KUTAX_PUBLIC_ORIGIN }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # The exact commit that passed the tests (the newest main for a run started by hand).
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3.0.1
+      - name: Build, migrate and deploy
+        shell: pwsh
+        env:
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          KUTAX_STORAGE_ENDPOINT: ${{ vars.KUTAX_STORAGE_ENDPOINT }}
+          KUTAX_STORAGE_BUCKET: ${{ vars.KUTAX_STORAGE_BUCKET }}
+          KUTAX_PUBLIC_ORIGIN: ${{ vars.KUTAX_PUBLIC_ORIGIN }}
+          KUTAX_ALLOW_REGISTRATION: ${{ vars.KUTAX_ALLOW_REGISTRATION }}
+          KUTAX_SMTP_HOST: ${{ vars.KUTAX_SMTP_HOST }}
+          KUTAX_SMTP_PORT: ${{ vars.KUTAX_SMTP_PORT }}
+          KUTAX_SMTP_USERNAME: ${{ vars.KUTAX_SMTP_USERNAME }}
+          KUTAX_EMAIL_FROM: ${{ vars.KUTAX_EMAIL_FROM }}
+        # Settings come in as environment variables (never pasted into the script), and match a deploy by hand.
+        run: |
+          $options = @{ ProjectId = $env:GCP_PROJECT_ID; StorageEndpoint = $env:KUTAX_STORAGE_ENDPOINT; Unattended = $true }
+          if ($env:KUTAX_STORAGE_BUCKET) { $options.StorageBucket = $env:KUTAX_STORAGE_BUCKET }
+          if ($env:KUTAX_PUBLIC_ORIGIN) { $options.PublicOrigin = $env:KUTAX_PUBLIC_ORIGIN }
+          if ($env:KUTAX_ALLOW_REGISTRATION -eq 'true') { $options.AllowRegistration = $true }
+          if ($env:KUTAX_SMTP_HOST) {
+            $options.SmtpHost = $env:KUTAX_SMTP_HOST
+            $options.SmtpUsername = $env:KUTAX_SMTP_USERNAME
+            $options.EmailFrom = $env:KUTAX_EMAIL_FROM
+            if ($env:KUTAX_SMTP_PORT) { $options.SmtpPort = [int] $env:KUTAX_SMTP_PORT }
+          }
+          ./scripts/Deploy-CloudRun.ps1 @options

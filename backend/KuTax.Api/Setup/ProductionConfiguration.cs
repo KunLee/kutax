@@ -15,7 +15,11 @@ public static class ProductionConfiguration
         }
         else if(configuration["DataProtection:KeyPath"] is not{Length:>0} path||!Path.IsPathFullyQualified(path))throw new InvalidOperationException("Production requires an absolute persistent data-protection key path.");
         var database=new NpgsqlConnectionStringBuilder(configuration.GetConnectionString("Database"));
-        if(database.Password is not{Length:>=24}||configuration["Storage:AccessKey"] is not{Length:>=16}||configuration["Storage:SecretKey"] is not{Length:>=24})throw new InvalidOperationException("Production requires independently generated protected database and storage credentials.");
+        // Says which credential is too short (never its value), so a deploy can be fixed without guessing.
+        // 16 random characters is far beyond guessing for a database reached only over TLS with sign-in limits.
+        if(database.Password is not{Length:>=16})throw new InvalidOperationException("Production requires a database password of at least 16 characters (check the Password= part of the connection string).");
+        if(configuration["Storage:AccessKey"] is not{Length:>=16})throw new InvalidOperationException("Production requires a storage access key of at least 16 characters.");
+        if(configuration["Storage:SecretKey"] is not{Length:>=24})throw new InvalidOperationException("Production requires a generated storage secret key of at least 24 characters.");
         if(string.IsNullOrWhiteSpace(configuration["Scanning:Host"]))throw new InvalidOperationException("Production requires a private malware-scanning endpoint.");
         // Either everything sits on a private network (self-hosted), or managed services are reached over TLS with the
         // scanner beside the app in the same instance (Cloud Run sidecar).

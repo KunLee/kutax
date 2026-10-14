@@ -1,13 +1,32 @@
 name: Build and test
 
+# Two long-lived branches: work lands on dev; dev is merged into main through a pull request, and main is what's
+# deployed (deploy.yml runs after this passes on main).
 on:
   push:
+    branches: [dev, main]
   pull_request:
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
+  # Only dev is merged into main, so production only ever receives what was already tested on dev.
+  merge-source:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Pull requests into main come from dev
+        env:
+          SOURCE: ${{ github.head_ref }}
+        run: |
+          if [ "$SOURCE" != "dev" ]; then
+            echo "::error::Merge into main from dev only (this pull request is from '$SOURCE'). Merge it into dev first."
+            exit 1
+          fi
+
   foundation:
     runs-on: ubuntu-latest
     timeout-minutes: 30

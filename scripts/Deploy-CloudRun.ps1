@@ -16,6 +16,9 @@
   ./scripts/Deploy-CloudRun.ps1 -ProjectId my-kutax -StorageEndpoint https://<account>.r2.cloudflarestorage.com
 .EXAMPLE
   ./scripts/Deploy-CloudRun.ps1 -ProjectId my-kutax -StorageEndpoint https://<account>.r2.cloudflarestorage.com -AdminEmail me@example.com
+.EXAMPLE
+  ./scripts/Deploy-CloudRun.ps1 -ProjectId my-kutax -StorageEndpoint https://<account>.r2.cloudflarestorage.com -Unattended
+  What GitHub Actions runs (.github/workflows/deploy.yml): never prompts, and needs the first deploy done by hand.
 #>
 param(
   [Parameter(Mandatory)] [string] $ProjectId,
@@ -32,14 +35,25 @@ param(
   [string] $SmtpHost = '',
   [int] $SmtpPort = 587,
   [string] $SmtpUsername = '',
-  [string] $EmailFrom = ''
+  [string] $EmailFrom = '',
+  # For CI: never asks for anything. Project setup and secrets must already exist (the first deploy is run by hand), and
+  # the deploying account only needs to build and deploy, not manage secrets or APIs.
+  [switch] $Unattended
 )
 $ErrorActionPreference = 'Stop'
 function Invoke-Gcloud { & gcloud @args; if ($LASTEXITCODE) { throw "gcloud $($args -join ' ') failed ($LASTEXITCODE)." } }
 function Test-Gcloud { & gcloud @args 2>$null | Out-Null; return $LASTEXITCODE -eq 0 }
-function Read-Secret([string] $prompt) {
-  $secure = Read-Host -AsSecureString $prompt
-  return [Net.NetworkCredential]::new('', $secure).Password
+# Hidden input; asks again when it's empty or too short, and (with -Confirm) until it's typed the same twice.
+# Pasting: right-click or Ctrl+V in Windows Terminal; nothing is shown either way.
+function Read-Secret([string] $prompt, [int] $MinLength = 1, [switch] $Confirm) {
+  while ($true) {
+    $value = [Net.NetworkCredential]::new('', (Read-Host -AsSecureString $prompt)).Password.Trim()
+    if ($value.Length -lt $MinLength) { Write-Host "  Nothing was entered, or it's shorter than $MinLength characters. Try again." -ForegroundColor Yellow; continue }
+    if ($Confirm -and $value -ne [Net.NetworkCredential]::new('', (Read-Host -AsSecureString 'Type it again to confirm')).Password.Trim()) {
+      Write-Host "  The two entries don't match. Try again." -ForegroundColor Yellow; continue
+    }
+    return $value
+  }
 }
 function Set-Secret([string] $name, [string] $value) {
   if (-not (Test-Gcloud secrets describe $name --project $ProjectId)) { Invoke-Gcloud secrets create $name --replication-policy=automatic --project $ProjectId | Out-Null }
@@ -48,27 +62,41 @@ function Set-Secret([string] $name, [string] $value) {
   finally { Remove-Item $file -Force }
 }
 function Confirm-Secret([string] $name, [scriptblock] $create) {
+  if ($Unattended) {
+    if (-not (Test-Gcloud secrets describe $name --project $ProjectId)) { throw "Secret $name is missing. Run this script by hand once to store it." }
+    return
+  }
   if (Test-Gcloud secrets versions access latest --secret $name --project $ProjectId) { return }
   Set-Secret $name (& $create)
 }
+if ($Unattended -and $AdminEmail) { throw 'Create the first administrator in a deploy run by hand, not with -Unattended.' }
+$account = "kutax-run@$ProjectId.iam.gserviceaccount.com"
 
 Write-Host "1/5 Project setup ($ProjectId, $Region)"
+if ($Unattended) {
+  if (-not (Test-Gcloud artifacts repositories describe kutax --location $Region --project $ProjectId) -or -not (Test-Gcloud iam service-accounts describe $account --project $ProjectId)) {
+    throw 'The project is not set up yet. Run this script by hand once before deploying from CI.'
+  }
+} else {
 Invoke-Gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com --project $ProjectId
 if (-not (Test-Gcloud artifacts repositories describe kutax --location $Region --project $ProjectId)) {
   Invoke-Gcloud artifacts repositories create kutax --repository-format=docker --location $Region --project $ProjectId
 }
-$account = "kutax-run@$ProjectId.iam.gserviceaccount.com"
 if (-not (Test-Gcloud iam service-accounts describe $account --project $ProjectId)) {
   Invoke-Gcloud iam service-accounts create kutax-run --display-name 'KuTax Cloud Run' --project $ProjectId
 }
+}
 
 Write-Host '2/5 Secrets (asks only for ones not stored yet)'
-Confirm-Secret kutax-database { Read-Secret 'Supabase connection string (session pooler, port 5432, ending ;SSL Mode=Require)' }
-Confirm-Secret kutax-storage-access-key { Read-Secret 'Cloudflare R2 access key ID' }
-Confirm-Secret kutax-storage-secret-key { Read-Secret 'Cloudflare R2 secret access key' }
+Confirm-Secret kutax-database { Read-Secret 'Supabase connection string (session pooler, port 5432, ending ;SSL Mode=Require)' -MinLength 40 }
+Confirm-Secret kutax-storage-access-key { Read-Secret 'Cloudflare R2 access key ID' -MinLength 16 }
+Confirm-Secret kutax-storage-secret-key { Read-Secret 'Cloudflare R2 secret access key' -MinLength 24 }
 # Encrypts the sign-in keys KuTax keeps in the database. Generated here once; keep it: replacing it signs everyone out
 # and makes saved AI keys unreadable.
-if (-not (Test-Gcloud secrets versions access latest --secret kutax-keys-certificate --project $ProjectId)) {
+if ($Unattended) {
+  Confirm-Secret kutax-keys-certificate {}
+  Confirm-Secret kutax-keys-certificate-password {}
+} elseif (-not (Test-Gcloud secrets versions access latest --secret kutax-keys-certificate --project $ProjectId)) {
   $password = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(24))
   $rsa = [Security.Cryptography.RSA]::Create(3072)
   $request = [Security.Cryptography.X509Certificates.CertificateRequest]::new('CN=KuTax data protection', $rsa, 'SHA256', [Security.Cryptography.RSASignaturePadding]::Pkcs1)
@@ -79,15 +107,16 @@ if (-not (Test-Gcloud secrets versions access latest --secret kutax-keys-certifi
 $secrets = @('kutax-database', 'kutax-storage-access-key', 'kutax-storage-secret-key', 'kutax-keys-certificate', 'kutax-keys-certificate-password')
 if ($SmtpHost) {
   if (-not $EmailFrom) { throw 'Give -EmailFrom (the sender address) with -SmtpHost.' }
-  Confirm-Secret kutax-smtp-password { Read-Secret "SMTP password for $SmtpUsername@$SmtpHost" }
+  Confirm-Secret kutax-smtp-password { Read-Secret "SMTP password for $SmtpUsername@$SmtpHost" -MinLength 8 }
   $secrets += 'kutax-smtp-password'
 }
-foreach ($name in $secrets) {
+foreach ($name in $(if ($Unattended) { @() } else { $secrets })) {
   Invoke-Gcloud secrets add-iam-policy-binding $name --member "serviceAccount:$account" --role roles/secretmanager.secretAccessor --project $ProjectId | Out-Null
 }
 
 Write-Host '3/5 Building images in Cloud Build'
-$tag = (Get-Date -Format 'yyyyMMdd-HHmmss')
+# Images are tagged with the time, and the commit when deployed from CI.
+$tag = (Get-Date -Format 'yyyyMMdd-HHmmss') + $(if ($env:GITHUB_SHA) { '-' + $env:GITHUB_SHA.Substring(0, 7) } else { '' })
 $registry = "$Region-docker.pkg.dev/$ProjectId/kutax"
 $appImage = "$registry/app:$tag"; $clamavImage = "$registry/clamav:$tag"
 Invoke-Gcloud builds submit --config infra/cloudrun/cloudbuild.yaml --substitutions "_APP_IMAGE=$appImage,_CLAMAV_IMAGE=$clamavImage" --project $ProjectId .
@@ -101,7 +130,7 @@ $secretEnv = 'ConnectionStrings__Database=kutax-database:latest,Storage__AccessK
 Write-Host '4/5 Database migrations and storage setup'
 $setupArgs = '--migrate,--initialise-storage'
 if ($AdminEmail) {
-  Set-Secret kutax-bootstrap-password (Read-Secret "Temporary password for $AdminEmail (12+ characters; you'll change it at first sign-in)")
+  Set-Secret kutax-bootstrap-password (Read-Secret "Temporary password for $AdminEmail (12+ characters with upper and lower case, a number and a symbol; you'll change it at first sign-in)" -MinLength 12 -Confirm)
   Invoke-Gcloud secrets add-iam-policy-binding kutax-bootstrap-password --member "serviceAccount:$account" --role roles/secretmanager.secretAccessor --project $ProjectId | Out-Null
   $setupArgs += ',--bootstrap-admin'
   $shared += ",BootstrapAdmin__Email=$AdminEmail"
@@ -134,4 +163,15 @@ try {
   Invoke-Gcloud run services replace $rendered --region $Region --project $ProjectId
 } finally { Remove-Item $rendered -Force }
 Invoke-Gcloud run services add-iam-policy-binding $Service --member allUsers --role roles/run.invoker --region $Region --project $ProjectId | Out-Null
+
+# The release counts only once the new revision answers: database, migrations and the bucket all checked.
+Write-Host 'Checking the new release is ready'
+$deadline = (Get-Date).AddMinutes(4)
+while ($true) {
+  try {
+    if ((Invoke-WebRequest -Uri "$PublicOrigin/api/health/ready" -TimeoutSec 30 -SkipHttpErrorCheck).StatusCode -eq 200) { break }
+  } catch { }
+  if ((Get-Date) -gt $deadline) { throw "Deployed, but $PublicOrigin/api/health/ready did not answer 200 within 4 minutes. Check the service logs in Cloud Run." }
+  Start-Sleep -Seconds 5
+}
 Write-Host "Done: $PublicOrigin"

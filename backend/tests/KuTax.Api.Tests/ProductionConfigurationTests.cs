@@ -26,6 +26,16 @@ public sealed class ProductionConfigurationTests
     {
         var settings=Managed();settings[key]=value;Assert.Throws<InvalidOperationException>(()=>ProductionConfiguration.Validate(new ConfigurationBuilder().AddInMemoryCollection(settings).Build()));
     }
+    [Theory]
+    [InlineData("Synthetic-15char", false)]
+    [InlineData("Synthetic-16chars", true)]
+    public void A_database_password_needs_at_least_16_characters(string password, bool accepted)
+    {
+        var settings=Managed();settings["ConnectionStrings:Database"]=$"Host=db.supabase.test;Password={password[..(accepted?16:15)]};SSL Mode=Require";
+        var configuration=new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+        if(accepted)ProductionConfiguration.Validate(configuration);
+        else Assert.Contains("database password of at least 16",Assert.Throws<InvalidOperationException>(()=>ProductionConfiguration.Validate(configuration)).Message);
+    }
     [Fact]
     public void Managed_hosting_with_tls_services_and_a_sidecar_scanner_is_accepted()=>ProductionConfiguration.Validate(new ConfigurationBuilder().AddInMemoryCollection(Managed()).Build());
     /// <summary>Cloud Run with Supabase, Cloudflare R2 and ClamAV as a sidecar.</summary>
