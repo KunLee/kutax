@@ -1398,4 +1398,5 @@ export const zh: Record<string, string> = {
   "Click to open its tax packs": "点击查看这一年的资料包",
   "Showing": "正在看",
   "Show all receipts": "显示全部收据",
+  "Expense amounts and deductible amounts differ. These are deductions, not a refund: Reports gives a rough idea of the tax they save.": "费用金额和可抵扣金额不一样。这些是抵扣额，不是退税额；想大致了解能少交多少税，请看「报表」。",
 };

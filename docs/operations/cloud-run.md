@@ -111,9 +111,14 @@ Each release counts as done only when the new revision answers `GET /api/health/
   - The baked ClamAV image answers within 9 seconds of starting.
   - The certificate made by the script loads the way the app loads it.
   - The storage changes (`Storage:Region`, SDK checksums only when required) pass all real-service tests against RustFS.
-- **Not yet verified (needs your accounts):**
-  - Cloud Run itself, including the sidecar memory limits and real cold-start times;
-  - the Supabase session pooler;
-  - uploads and downloads against real R2.
+- **Verified in production (`kutax-prod`, 15 October 2026):**
+  - Cloud Run serves the app with the ClamAV sidecar; ClamAV's startup check passed within seconds of starting.
+  - The setup job migrated the Supabase database through the session pooler (TLS) and created the first administrator.
+  - `GET /api/health/ready` returns 200: database, applied migrations and authenticated access to the R2 bucket.
+  - The sign-in page loads in about a second on phone and desktop with no errors.
+  - Security headers (HSTS, CSP, nosniff, no-referrer) are present. A wrong `Host` gets 404.
+- **Still to verify:**
+  - a real receipt upload and download against R2 after signing in;
+  - cold-start time after the service has scaled to zero.
 
   Run a first deploy with synthetic data and check `/api/health/ready`, an upload, a download and a tax pack before storing real records.

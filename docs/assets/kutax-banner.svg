@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" role="img" aria-labelledby="title desc">
+  <title id="title">KuTax</title>
+  <desc id="desc">KuTax: private-first receipts and myTax preparation for Australians. AI suggests, rules calculate, you approve.</desc>
+  <defs>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0 H0 V28" fill="none" stroke="#062f52" stroke-opacity=".07" stroke-width="1.5"/>
+    </pattern>
+  </defs>
+  <rect x="10" y="10" width="1180" height="360" rx="34" fill="#062f52"/>
+  <rect x="4" y="4" width="1176" height="356" rx="32" fill="#c8efea" stroke="#062f52" stroke-width="6"/>
+  <rect x="4" y="4" width="1176" height="356" rx="32" fill="url(#grid)"/>
+
+  <!-- The icon (docs/assets/kutax-icon.svg), scaled. -->
+  <g transform="translate(70 62) scale(0.98)">
+    <g transform="rotate(9 168 92)">
+      <path d="M118 28 L130 18 L142 28 L154 18 L166 28 L178 18 L190 28 L202 18 L214 28 L214 150 L118 150 Z" fill="#f8f2db" stroke="#062f52" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M134 44 H170" stroke="#0b5271" stroke-width="7" stroke-linecap="round"/>
+      <path d="M172 62 L183 73 L204 46" fill="none" stroke="#0b5a42" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <rect x="38" y="92" width="178" height="146" rx="34" fill="#062f52"/>
+    <rect x="26" y="80" width="178" height="146" rx="34" fill="#f5dc83" stroke="#062f52" stroke-width="8"/>
+    <path d="M42 98 Q42 92 52 92 H96" fill="none" stroke="#fbefc0" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="88" cy="168" r="15" fill="#f47d6b" stroke="#062f52" stroke-width="5"/>
+    <circle cx="142" cy="168" r="15" fill="#f47d6b" stroke="#062f52" stroke-width="5"/>
+    <circle cx="84" cy="163" r="4.5" fill="#f8f2db"/>
+    <circle cx="138" cy="163" r="4.5" fill="#f8f2db"/>
+    <path d="M104 196 Q115 205 126 196" fill="none" stroke="#062f52" stroke-width="6" stroke-linecap="round"/>
+    <path d="M40 22 C42 38 46 42 62 44 C46 46 42 50 40 66 C38 50 34 46 18 44 C34 42 38 38 40 22 Z" fill="#f47d6b" stroke="#062f52" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+
+  <g font-family="Manrope, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" fill="#062f52">
+    <text x="372" y="168" font-size="112" font-weight="800" letter-spacing="-3">KuTax</text>
+    <text x="376" y="222" font-size="30" font-weight="600" fill="#234357">Receipts in, a tax pack out: your myTax, prepared.</text>
+  </g>
+  <!-- Three promises, as pills. -->
+  <g font-family="Manrope, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="800" fill="#062f52">
+    <rect x="380" y="256" width="168" height="46" rx="23" fill="#062f52"/><rect x="376" y="252" width="168" height="46" rx="23" fill="#f5dc83" stroke="#062f52" stroke-width="3"/>
+    <text x="460" y="283" text-anchor="middle">AI suggests</text>
+    <rect x="572" y="256" width="218" height="46" rx="23" fill="#062f52"/><rect x="568" y="252" width="218" height="46" rx="23" fill="#75d5ae" stroke="#062f52" stroke-width="3"/>
+    <text x="677" y="283" text-anchor="middle">Rules calculate</text>
+    <rect x="814" y="256" width="186" height="46" rx="23" fill="#062f52"/><rect x="810" y="252" width="186" height="46" rx="23" fill="#f47d6b" stroke="#062f52" stroke-width="3"/>
+    <text x="903" y="283" text-anchor="middle">You approve</text>
+  </g>
+  <path d="M1110 54 C1112 68 1115 71 1129 73 C1115 75 1112 78 1110 92 C1108 78 1105 75 1091 73 C1105 71 1108 68 1110 54 Z" fill="#20c9c6" stroke="#062f52" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M1066 108 C1067 116 1069 118 1077 119 C1069 120 1067 122 1066 130 C1065 122 1063 120 1055 119 C1063 118 1065 116 1066 108 Z" fill="#f5dc83" stroke="#062f52" stroke-width="3" stroke-linejoin="round"/>
+</svg>

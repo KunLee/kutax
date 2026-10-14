@@ -33,7 +33,15 @@ builder.Services.AddProblemDetails();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    // Retain the framework's loopback trust; add only explicitly configured proxy IPs.
+    // Managed hosting (Cloud Run): the container is reachable only through Google's front end, which terminates TLS
+    // and sets X-Forwarded-Proto/For from varying addresses, so it is trusted for the last hop only (ForwardLimit 1:
+    // the client address Google appends, not anything a client sent). Self-hosted: loopback plus configured proxy IPs.
+    if (builder.Configuration.GetValue<bool>("Production:ManagedServices"))
+    {
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+        options.ForwardLimit = 1;
+    }
     foreach (var address in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
         options.KnownProxies.Add(IPAddress.Parse(address));
 });

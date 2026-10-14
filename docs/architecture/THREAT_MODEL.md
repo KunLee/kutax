@@ -53,6 +53,7 @@ Reviewed: 10 October 2026, for the M6 personal-trial gate. Scope is the single-i
 | Account directory exposure through sharing suggestions | `GET /api/sharing/people` suggests people you've shared with first, then other enabled accounts only after two typed characters, at most six, never yourself; returns name and email only | `SharingTests` |
 | Unsafe profile photos | The app shrinks photos to a 256-pixel JPEG; the server accepts only JPEG/PNG/WebP recognised by their first bytes, at most 200 KB, stored apart from the account and served only to its owner | `UserManagementTests` |
 | Administrator misuse of other accounts | Administrators can't change another person's name or email; promotion and demotion sign the person out, never apply to yourself, and keep at least one enabled administrator; notes are visible to administrators only | `UserManagementTests` |
+| Spoofed client address or scheme behind Cloud Run | Forwarded headers are trusted only in managed mode, where the container is reachable solely through Google's front end, and only for the last hop (`ForwardLimit` 1). A client-supplied `X-Forwarded-For` can't replace the address Google appends. | Production verification (deploy health check) |
 
 ## Open risks (accepted for the personal trial, not for wider use)
 

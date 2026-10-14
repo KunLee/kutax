@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title">
+  <title id="title">KuTax</title>
+  <!-- A ticked receipt peeking out behind the KuTax face. Colours from the Retro theme. -->
+  <g transform="rotate(9 168 92)">
+    <path d="M118 28 L130 18 L142 28 L154 18 L166 28 L178 18 L190 28 L202 18 L214 28 L214 150 L118 150 Z" fill="#f8f2db" stroke="#062f52" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M134 44 H170" stroke="#0b5271" stroke-width="7" stroke-linecap="round"/>
+    <path d="M172 62 L183 73 L204 46" fill="none" stroke="#0b5a42" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <rect x="38" y="92" width="178" height="146" rx="34" fill="#062f52"/>
+  <rect x="26" y="80" width="178" height="146" rx="34" fill="#f5dc83" stroke="#062f52" stroke-width="8"/>
+  <path d="M42 98 Q42 92 52 92 H96" fill="none" stroke="#fbefc0" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="88" cy="168" r="15" fill="#f47d6b" stroke="#062f52" stroke-width="5"/>
+  <circle cx="142" cy="168" r="15" fill="#f47d6b" stroke="#062f52" stroke-width="5"/>
+  <circle cx="84" cy="163" r="4.5" fill="#f8f2db"/>
+  <circle cx="138" cy="163" r="4.5" fill="#f8f2db"/>
+  <path d="M104 196 Q115 205 126 196" fill="none" stroke="#062f52" stroke-width="6" stroke-linecap="round"/>
+  <path d="M40 22 C42 38 46 42 62 44 C46 46 42 50 40 66 C38 50 34 46 18 44 C34 42 38 38 40 22 Z" fill="#f47d6b" stroke="#062f52" stroke-width="4" stroke-linejoin="round"/>
+</svg>
