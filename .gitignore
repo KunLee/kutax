@@ -437,3 +437,6 @@ FodyWeavers.xsd
 
 # Local database backups taken by scripts/Start-Local.ps1 (they contain your records).
 infra/backups/
+
+# Wrangler local state (infra/cloudflare).
+.wrangler/

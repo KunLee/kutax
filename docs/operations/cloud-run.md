@@ -46,7 +46,20 @@ What happens on each run:
 
 **Releases:** later releases need only `-ProjectId` and `-StorageEndpoint`. ClamAV's signatures don't need a schedule. Each release builds them into the image, and when an instance starts, freshclam fetches whatever changed since then and keeps checking while the instance runs. After a long time without releases, that first catch-up is bigger; scans still run meanwhile with the built-in signatures.
 
-**Your own domain:** map it in Cloud Run (*Manage custom domains*), then deploy again with `-PublicOrigin https://tax.example.com`. KuTax only answers on the hosts it's configured for.
+**Your own domain** (Cloudflare): a small Cloudflare Worker (`infra/cloudflare`) receives the domain and forwards to the Cloud Run address. It adds a shared secret so KuTax refuses anything that didn't come through Cloudflare, and it passes the visitor's address for sign-in rate limits. It also redirects `www` and caches the hashed build files at the edge.
+1. In Cloudflare DNS, add proxied (orange) records for the domain and `www`. Their target doesn't matter; the Worker answers them. No Origin Rule is needed.
+2. Store the shared secret once, if a deploy hasn't already: `kutax-origin-secret` in Secret Manager, 64 random hex characters. `Deploy-CloudRun.ps1` creates it the first time it runs with `-PublicOrigin`.
+3. Deploy the Worker. Set the domain and the Cloud Run address in `infra/cloudflare/wrangler.jsonc` first, then:
+   ```powershell
+   cd infra/cloudflare
+   npm ci
+   npx wrangler login
+   npx wrangler deploy
+   gcloud secrets versions access latest --secret kutax-origin-secret --project <your-project> | npx wrangler secret put ORIGIN_SHARED_SECRET
+   ```
+4. Deploy KuTax with `-PublicOrigin https://your-domain`. A deploy by hand checks Cloud Run directly (with the secret), then through the domain. For CI, set the repository variable `KUTAX_PUBLIC_ORIGIN`.
+
+After step 4, the `run.app` address answers 403. To rotate the secret: add a new version in Secret Manager, run step 3's last command, then deploy KuTax.
 
 **Email for sharing invitations (optional):** add `-SmtpHost smtp.example.com -SmtpUsername <user> -EmailFrom kutax@your-domain` (and `-SmtpPort` if it isn't 587). The SMTP password is asked for once and kept in Secret Manager. Any provider works (Resend, Brevo, Amazon SES, Google Workspace). Without it, KuTax shows the invitation link for you to send yourself.
 

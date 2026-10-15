@@ -352,4 +352,15 @@ The automated app accessibility audit is done. A manual screen-reader pass and t
   - The phone estimate card's text collapsed into a narrow column in Chinese.
   - The tax summary said "KuTax never estimates a refund"; it now points to the Reports estimate instead.
 
+**Own domain: kutax.com.au (15 October 2026).**
+- **Worker:** a Cloudflare Worker (`infra/cloudflare`, wrangler 4.151.0) serves `kutax.com.au` and `www`. It forwards to Cloud Run's `run.app` address with a shared secret (`X-KuTax-Origin-Verify`, Secret Manager `kutax-origin-secret`) and the visitor's address (`X-KuTax-Client-IP`). It redirects `www`, caches only hashed build files, and leaves query strings out of logs. 5 Node tests and a `wrangler deploy --dry-run` run in CI.
+- **App:** with `Origin:SharedSecret` set, it serves only requests carrying the secret (fixed-time comparison) and takes the client address from the Worker only then. Production on a non-`run.app` domain refuses to start without a secret of at least 32 characters. `AllowedHosts` holds the domain and the `run.app` name.
+- **Deploy script:** `-PublicOrigin` creates or uses the secret. A deploy by hand checks readiness directly on Cloud Run (with the secret), then through the domain.
+- **Home page:** before the first receipt, there's no next-step card. The inbox is that step, and the lodging deadline moves to the financial-year line.
+- **Verified in production:**
+  - `https://kutax.com.au` and `/api/health/ready` answer 200, and `www` redirects with path and query kept.
+  - The `run.app` address answers 403 without the secret or with a forged one.
+  - The sign-in page loads on phone and desktop with no errors.
+- **Tests:** 91 API and 44 frontend tests pass.
+
 Remaining for the M6 gate: manual screen-reader and report-readability review, the AI evaluation (owner action), the real-receipt personal pilot after the owner reviews privacy/consent settings (owner action), a broad M5 regression after M6 changes, and hosted CI. Do not declare delivery-ready yet.

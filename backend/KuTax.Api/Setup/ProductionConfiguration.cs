@@ -28,6 +28,9 @@ public static class ProductionConfiguration
             if(database.SslMode is not(SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull))throw new InvalidOperationException("Managed production requires a TLS database connection (SSL Mode=Require or stricter).");
             if(!Uri.TryCreate(configuration["Storage:Endpoint"],UriKind.Absolute,out var storage)||storage.Scheme!="https")throw new InvalidOperationException("Managed production requires an HTTPS storage endpoint.");
             if(configuration["Scanning:Host"] is not("localhost" or "127.0.0.1"))throw new InvalidOperationException("Managed production requires the malware scanner beside the app (Scanning:Host=localhost).");
+            // Your own domain goes through the Cloudflare Worker, which proves itself with a shared secret.
+            if(!origin.Host.EndsWith(".run.app",StringComparison.OrdinalIgnoreCase)&&configuration["Origin:SharedSecret"] is not{Length:>=32})
+                throw new InvalidOperationException("Managed production on your own domain requires Origin:SharedSecret (at least 32 characters), shared with the Cloudflare Worker.");
         }
         else if(!configuration.GetValue<bool>("Production:PrivateServiceNetwork"))throw new InvalidOperationException("Production database, storage and scanner endpoints must be on a private service network.");
     }

@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, OnDestroy, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -12,7 +12,7 @@ import { TranslatePipe } from '../core/i18n';
 
 @Component({
   selector: 'app-inbox-page',
-  imports: [TranslatePipe, CurrencyPipe, DatePipe, RouterLink, Icon, ReceiptInbox, ReceiptList, AiStatus],
+  imports: [TranslatePipe, CurrencyPipe, DatePipe, NgTemplateOutlet, RouterLink, Icon, ReceiptInbox, ReceiptList, AiStatus],
   template: `
     @if (session.account(); as user) {
       <div class="page">
@@ -32,21 +32,25 @@ import { TranslatePipe } from '../core/i18n';
             }
           </div>
         </section>
-        <p class="muted small year">{{ label(user.financialYearStart) }} · {{ user.financialYearFrom | date: ('d MMM yyyy' | t) }} – {{ user.financialYearTo | date: ('d MMM yyyy' | t) }}</p>
+        <ng-template #deadlineBadge>
+          @if (deadline(); as d) {
+            <span class="deadline" [class.deadline--soon]="d.days <= 14" [class.deadline--past]="d.days < 0" role="status">
+              <app-icon name="calendar" [size]="16" />
+              @if (d.days > 1) { {{ '{n} days left to lodge yourself (31 October)' | t: { n: d.days } }} }
+              @else if (d.days === 1) { {{ '1 day left to lodge yourself (31 October)' | t }} }
+              @else if (d.days === 0) { {{ 'Last day to lodge yourself: today' | t }} }
+              @else { {{ 'The 31 October date has passed: a registered tax agent can usually still lodge for you' | t }} }
+            </span>
+          }
+        </ng-template>
+        <p class="muted small year">{{ label(user.financialYearStart) }} · {{ user.financialYearFrom | date: ('d MMM yyyy' | t) }} – {{ user.financialYearTo | date: ('d MMM yyyy' | t) }}
+          @if (!card()) { <ng-container [ngTemplateOutlet]="deadlineBadge" /> }</p>
 
-        @if (next(); as step) {
+        @if (card(); as step) {
           <section class="card next-step" aria-labelledby="next-step-title">
             <div class="step-top">
               <span class="step-count">{{ step.step === 4 && step.done ? ('All done' | t) : ('Step {n} of 4' | t: { n: step.step }) }}</span>
-              @if (deadline(); as d) {
-                <span class="deadline" [class.deadline--soon]="d.days <= 14" [class.deadline--past]="d.days < 0" role="status">
-                  <app-icon name="calendar" [size]="16" />
-                  @if (d.days > 1) { {{ '{n} days left to lodge yourself (31 October)' | t: { n: d.days } }} }
-                  @else if (d.days === 1) { {{ '1 day left to lodge yourself (31 October)' | t }} }
-                  @else if (d.days === 0) { {{ 'Last day to lodge yourself: today' | t }} }
-                  @else { {{ 'The 31 October date has passed: a registered tax agent can usually still lodge for you' | t }} }
-                </span>
-              }
+              <ng-container [ngTemplateOutlet]="deadlineBadge" />
             </div>
             <h2 id="next-step-title">{{ step.title | t: step.params }}</h2>
             <p>{{ step.detail | t: step.params }}</p>
@@ -105,7 +109,7 @@ import { TranslatePipe } from '../core/i18n';
     }
   `,
   styles: `
-    .year { margin: -16px 0 20px; }
+    .year { align-items: center; display: flex; flex-wrap: wrap; gap: 6px 12px; margin: -16px 0 20px; }
     .pill { align-items: center; background: var(--white); border: 1px solid var(--line); border-radius: 18px; display: flex; flex: none; gap: 12px; padding: 9px 16px 9px 9px; }
     .pill small, .pill strong { display: block; }
     .pill small { color: var(--ink-soft); font-size: 12px; }
@@ -185,6 +189,8 @@ export class InboxPage implements OnDestroy {
     ];
     return steps.find((s): s is Step => !!s) ?? null;
   });
+  /** The next-step card, except before the first receipt: the inbox just below is that step, with drag and drop. */
+  readonly card = computed(() => (this.next()?.step === 1 ? null : this.next()));
   toUpload() {
     document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }

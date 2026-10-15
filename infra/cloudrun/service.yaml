@@ -77,6 +77,8 @@ spec:
                 secretKeyRef: { name: kutax-keys-certificate-password, key: latest }
             # Sharing invitations by email (optional; without it the app shows the link to send yourself).
 ${EMAIL_ENV}
+            # Your own domain: the shared secret the Cloudflare Worker sends (infra/cloudflare).
+${ORIGIN_ENV}
         - name: clamav
           image: ${CLAMAV_IMAGE}
           resources:

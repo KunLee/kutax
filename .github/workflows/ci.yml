@@ -54,6 +54,12 @@ jobs:
           npm ci --no-fund --no-audit
           npm run build
           npm test
+      - name: Test the Cloudflare Worker (own domain)
+        working-directory: infra/cloudflare
+        run: |
+          npm ci --no-fund --no-audit
+          npm test
+          npx wrangler deploy --dry-run
       - name: Generate ephemeral service credentials
         shell: bash
         run: |
