@@ -6,6 +6,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# WebRequestSession lives in this module, which a fresh PowerShell (CI's Linux runner) loads only on first use of one
+# of its commands; load it before the type is needed.
+Import-Module Microsoft.PowerShell.Utility
 $settings = @{}
 Get-Content -LiteralPath $EnvironmentFile | ForEach-Object {
     if ($_ -match '^([^#=]+)=(.*)$') { $settings[$Matches[1]] = $Matches[2] }
