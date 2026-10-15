@@ -58,7 +58,7 @@ interface Receipt {id:string;originalFileName:string;}
  <div><small>{{ 'Unassessed expenses' | t }}</small><strong>{{report.unassessedExpenseTotal|currency:('AUD' | t):'symbol-narrow'}}</strong></div>
  <div><small>{{ 'Excluded expenses' | t }}</small><strong>{{report.excludedExpenseTotal|currency:('AUD' | t):'symbol-narrow'}}</strong></div>
 </div>
-<p class="muted small">{{ 'Expense amounts and deductible amounts differ. These are deductions only — KuTax never estimates a refund.' | t }}</p>
+<p class="muted small">{{ 'Expense amounts and deductible amounts differ. These are deductions, not a refund: Reports gives a rough idea of the tax they save.' | t }}</p>
 
 @if(report.sections?.length){<section class="card section" aria-labelledby="mytax-title">
  <div class="section-heading"><div><span class="kicker">{{ 'For myTax' | t }}</span><h2 id="mytax-title">{{ 'What goes where' | t }}</h2></div></div>

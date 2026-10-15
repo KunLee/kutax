@@ -366,6 +366,8 @@ const bracketKey = 'kutax.reports.bracket';
       .pair { gap: 0; grid-template-columns: minmax(0, 1fr); }
       .pair > .card { margin-top: 20px; }
       .estimate { align-items: flex-start; flex-wrap: wrap; }
+      .estimate-copy { flex: 1 1 calc(100% - 70px); }
+      .estimate app-select-menu { flex: 1 1 100%; }
     }
     @media (max-width: 480px) {
       .kpi strong { font-size: 21px; }

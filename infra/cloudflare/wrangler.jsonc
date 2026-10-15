@@ -1,0 +1,22 @@
+// The Cloudflare Worker that serves KuTax on your own domain (see docs/operations/cloud-run.md, "Your own domain").
+// Deploy: npm ci && npx wrangler deploy (after `npx wrangler login`). The shared secret is set separately with
+// `wrangler secret put ORIGIN_SHARED_SECRET` and never written here.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kutax-proxy",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-13",
+  "workers_dev": false,
+  "preview_urls": false,
+  // The DNS records for these names must exist and be proxied (orange cloud); their target doesn't matter.
+  "routes": [
+    { "pattern": "kutax.com.au/*", "zone_name": "kutax.com.au" },
+    { "pattern": "www.kutax.com.au/*", "zone_name": "kutax.com.au" }
+  ],
+  "vars": {
+    "ORIGIN_URL": "https://kutax-375669529406.australia-southeast1.run.app",
+    "CANONICAL_HOST": "kutax.com.au"
+  },
+  // Request logs without query strings (invitation and download links can carry tokens).
+  "observability": { "enabled": true, "head_sampling_rate": 1, "redact_query_string": true }
+}

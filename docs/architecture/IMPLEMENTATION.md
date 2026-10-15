@@ -335,4 +335,32 @@ The automated app accessibility audit is done. A manual screen-reader pass and t
 - **Tests:** 86 API, 10 real-service integration (receipt-list filters added) and 43 frontend tests pass. Two failed integration runs, caused by a cleanup-order bug in the new test (since fixed), had left 4 synthetic `list-…@kutax.test` accounts in the local database; they were removed.
 - **Checked in the browser (Chinese, phone and desktop):** the estimate ($3,110 at 32% = $995.20), missing months and last-year cards, a month opening its receipts with the chip, the 17-day deadline badge, and the menu clearing the chip. The richer report used synthetic data substituted in the browser.
 
+**First production deploy and CI/CD (15 October 2026).**
+- **Production:** Cloud Run project `kutax-prod` (`australia-southeast1`), Supabase session pooler (Sydney), Cloudflare R2 bucket `kutax-media`. The first deploys found four problems, all fixed:
+  - **Credential length:** the production check required a 24-character database password, and the error didn't say which credential was short. The minimum is now 16 characters (owner's decision: a random 16-character password over TLS with sign-in limits is out of reach of guessing), and each credential has its own message.
+  - **Empty prompt:** an empty hidden-prompt entry was submitted as a secret. The deploy script's prompts now re-ask when input is empty or too short, and the temporary administrator password is typed twice.
+  - **Startup probe:** Cloud Run's HTTP startup probe doesn't send the public host name, so host filtering answered 400 and the instance never counted as started. The startup probe is now TCP on 8080, and the deploy script checks `GET /api/health/ready` on the public URL afterwards.
+- **Forwarded headers:** behind Cloud Run every page answered "HTTPS is required". Google's front end terminates TLS and forwards from addresses that aren't fixed, so `X-Forwarded-Proto` wasn't trusted. With `Production:ManagedServices`, forwarded headers are now trusted for the last hop only (`ForwardLimit` 1). The container is reachable only through Google's front end, and the client address used for sign-in rate limits is the one Google appends. Self-hosting keeps loopback plus the explicit `ReverseProxy:KnownProxies` list.
+- **Migrations:** the setup job applied migrations to the production database and created the first administrator. The temporary password secret was then deleted.
+- **CI/CD:**
+  - `deploy.yml` releases `main` after **Build and test** passes on a push, or when started by hand. There's no schedule: ClamAV's freshclam updates signatures when an instance starts.
+  - Sign-in uses Workload Identity Federation limited to `KunLee/kutax` on `refs/heads/main`, with a least-privilege `kutax-deployer` account (`scripts/Setup-GitHubDeploy.ps1`). `Deploy-CloudRun.ps1 -Unattended` never prompts.
+  - Branches: work on `dev`, release by pull request `dev` → `main`. CI rejects pull requests into `main` from other branches (`merge-source`).
+- **CI fix:** the integration tests assumed the bucket already existed. On CI's empty RustFS, tests that ran before `FoundationTests` failed with NoSuchBucket. An assembly fixture now migrates the database and creates the bucket once, before any test. It was reproduced and verified locally with an empty database and a new bucket: 10 of 10 pass.
+- **README:** banner and icon (`docs/assets/`), feature table, and screenshots from the synthetic demo account (`docs/assets/screenshots/`). The favicon now matches the icon.
+- **Fixes:**
+  - The phone estimate card's text collapsed into a narrow column in Chinese.
+  - The tax summary said "KuTax never estimates a refund"; it now points to the Reports estimate instead.
+
+**Own domain: kutax.com.au (15 October 2026).**
+- **Worker:** a Cloudflare Worker (`infra/cloudflare`, wrangler 4.151.0) serves `kutax.com.au` and `www`. It forwards to Cloud Run's `run.app` address with a shared secret (`X-KuTax-Origin-Verify`, Secret Manager `kutax-origin-secret`) and the visitor's address (`X-KuTax-Client-IP`). It redirects `www`, caches only hashed build files, and leaves query strings out of logs. 5 Node tests and a `wrangler deploy --dry-run` run in CI.
+- **App:** with `Origin:SharedSecret` set, it serves only requests carrying the secret (fixed-time comparison) and takes the client address from the Worker only then. Production on a non-`run.app` domain refuses to start without a secret of at least 32 characters. `AllowedHosts` holds the domain and the `run.app` name.
+- **Deploy script:** `-PublicOrigin` creates or uses the secret. A deploy by hand checks readiness directly on Cloud Run (with the secret), then through the domain.
+- **Home page:** before the first receipt, there's no next-step card. The inbox is that step, and the lodging deadline moves to the financial-year line.
+- **Verified in production:**
+  - `https://kutax.com.au` and `/api/health/ready` answer 200, and `www` redirects with path and query kept.
+  - The `run.app` address answers 403 without the secret or with a forged one.
+  - The sign-in page loads on phone and desktop with no errors.
+- **Tests:** 91 API and 44 frontend tests pass.
+
 Remaining for the M6 gate: manual screen-reader and report-readability review, the AI evaluation (owner action), the real-receipt personal pilot after the owner reviews privacy/consent settings (owner action), a broad M5 regression after M6 changes, and hosted CI. Do not declare delivery-ready yet.

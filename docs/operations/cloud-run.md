@@ -46,7 +46,20 @@ What happens on each run:
 
 **Releases:** later releases need only `-ProjectId` and `-StorageEndpoint`. ClamAV's signatures don't need a schedule. Each release builds them into the image, and when an instance starts, freshclam fetches whatever changed since then and keeps checking while the instance runs. After a long time without releases, that first catch-up is bigger; scans still run meanwhile with the built-in signatures.
 
-**Your own domain:** map it in Cloud Run (*Manage custom domains*), then deploy again with `-PublicOrigin https://tax.example.com`. KuTax only answers on the hosts it's configured for.
+**Your own domain** (Cloudflare): a small Cloudflare Worker (`infra/cloudflare`) receives the domain and forwards to the Cloud Run address. It adds a shared secret so KuTax refuses anything that didn't come through Cloudflare, and it passes the visitor's address for sign-in rate limits. It also redirects `www` and caches the hashed build files at the edge.
+1. In Cloudflare DNS, add proxied (orange) records for the domain and `www`. Their target doesn't matter; the Worker answers them. No Origin Rule is needed.
+2. Store the shared secret once, if a deploy hasn't already: `kutax-origin-secret` in Secret Manager, 64 random hex characters. `Deploy-CloudRun.ps1` creates it the first time it runs with `-PublicOrigin`.
+3. Deploy the Worker. Set the domain and the Cloud Run address in `infra/cloudflare/wrangler.jsonc` first, then:
+   ```powershell
+   cd infra/cloudflare
+   npm ci
+   npx wrangler login
+   npx wrangler deploy
+   gcloud secrets versions access latest --secret kutax-origin-secret --project <your-project> | npx wrangler secret put ORIGIN_SHARED_SECRET
+   ```
+4. Deploy KuTax with `-PublicOrigin https://your-domain`. A deploy by hand checks Cloud Run directly (with the secret), then through the domain. For CI, set the repository variable `KUTAX_PUBLIC_ORIGIN`.
+
+After step 4, the `run.app` address answers 403. To rotate the secret: add a new version in Secret Manager, run step 3's last command, then deploy KuTax.
 
 **Email for sharing invitations (optional):** add `-SmtpHost smtp.example.com -SmtpUsername <user> -EmailFrom kutax@your-domain` (and `-SmtpPort` if it isn't 587). The SMTP password is asked for once and kept in Secret Manager. Any provider works (Resend, Brevo, Amazon SES, Google Workspace). Without it, KuTax shows the invitation link for you to send yourself.
 
@@ -111,9 +124,14 @@ Each release counts as done only when the new revision answers `GET /api/health/
   - The baked ClamAV image answers within 9 seconds of starting.
   - The certificate made by the script loads the way the app loads it.
   - The storage changes (`Storage:Region`, SDK checksums only when required) pass all real-service tests against RustFS.
-- **Not yet verified (needs your accounts):**
-  - Cloud Run itself, including the sidecar memory limits and real cold-start times;
-  - the Supabase session pooler;
-  - uploads and downloads against real R2.
+- **Verified in production (`kutax-prod`, 15 October 2026):**
+  - Cloud Run serves the app with the ClamAV sidecar; ClamAV's startup check passed within seconds of starting.
+  - The setup job migrated the Supabase database through the session pooler (TLS) and created the first administrator.
+  - `GET /api/health/ready` returns 200: database, applied migrations and authenticated access to the R2 bucket.
+  - The sign-in page loads in about a second on phone and desktop with no errors.
+  - Security headers (HSTS, CSP, nosniff, no-referrer) are present. A wrong `Host` gets 404.
+- **Still to verify:**
+  - a real receipt upload and download against R2 after signing in;
+  - cold-start time after the service has scaled to zero.
 
   Run a first deploy with synthetic data and check `/api/health/ready`, an upload, a download and a tax pack before storing real records.

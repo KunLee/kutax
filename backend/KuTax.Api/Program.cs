@@ -33,7 +33,15 @@ builder.Services.AddProblemDetails();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    // Retain the framework's loopback trust; add only explicitly configured proxy IPs.
+    // Managed hosting (Cloud Run): the container is reachable only through Google's front end, which terminates TLS
+    // and sets X-Forwarded-Proto/For from varying addresses, so it is trusted for the last hop only (ForwardLimit 1:
+    // the client address Google appends, not anything a client sent). Self-hosted: loopback plus configured proxy IPs.
+    if (builder.Configuration.GetValue<bool>("Production:ManagedServices"))
+    {
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+        options.ForwardLimit = 1;
+    }
     foreach (var address in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
         options.KnownProxies.Add(IPAddress.Parse(address));
 });
@@ -97,6 +105,24 @@ if (await SetupCommands.RunAsync(app, args)) return;
 
 app.UseExceptionHandler();
 app.UseForwardedHeaders();
+// Behind the Cloudflare Worker (own domain): only requests carrying the shared secret are served, so the run.app
+// address can't be used to go around Cloudflare. The Worker also passes the visitor's address, trusted only then.
+if (builder.Configuration["Origin:SharedSecret"] is { Length: > 0 } originSecret)
+{
+    var expected = System.Text.Encoding.UTF8.GetBytes(originSecret);
+    app.Use(async (context, next) =>
+    {
+        var sent = System.Text.Encoding.UTF8.GetBytes(context.Request.Headers[OriginHeaders.Verify].ToString());
+        context.Request.Headers.Remove(OriginHeaders.Verify);
+        if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(sent, expected))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+        if (IPAddress.TryParse(context.Request.Headers[OriginHeaders.ClientAddress].ToString(), out var client)) context.Connection.RemoteIpAddress = client;
+        await next(context);
+    });
+}
 app.Use(async(context,next)=>
 {
     if(!app.Environment.IsDevelopment()&&!context.Request.IsHttps&&context.Request.Path!="/api/health/live")
@@ -193,3 +219,9 @@ app.Run();
 
 public partial class Program;
 
+/// <summary>Headers the Cloudflare Worker (infra/cloudflare) adds to every request it forwards.</summary>
+static class OriginHeaders
+{
+    public const string Verify = "X-KuTax-Origin-Verify";
+    public const string ClientAddress = "X-KuTax-Client-IP";
+}
