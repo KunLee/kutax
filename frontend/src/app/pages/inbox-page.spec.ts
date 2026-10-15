@@ -46,4 +46,21 @@ describe('inbox page', () => {
     expect(TestBed.inject(Session).counts()?.needsReview).toBe(2);
     http.verify();
   });
+
+  it('starts with the inbox itself before the first receipt, with no separate next-step card', async () => {
+    TestBed.configureTestingModule({ imports: [InboxPage], providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    TestBed.inject(Session).account.set({
+      id: 'owner', email: 'owner@kutax.test', displayName: 'Alex Synthetic', isAdministrator: false, mustChangePassword: false,
+      financialYearStart: 2025, financialYearLabel: 'FY 2025–26', financialYearFrom: '2025-07-01', financialYearTo: '2026-06-30',
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(InboxPage);
+    fixture.detectChanges();
+    http.expectOne('/api/documents/?page=1').flush({ items: [], total: 0, page: 1, pageSize: 50, counts: { total: 0, needsReview: 0, processing: 0, confirmed: 0, blocked: 0 } });
+    http.match(() => true).forEach((request) => request.flush(request.request.url.includes('exports') ? [] : {}));
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.next()?.step).toBe(1);
+    expect(fixture.nativeElement.querySelector('.next-step')).toBeNull();
+  });
 });

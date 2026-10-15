@@ -87,6 +87,15 @@ if (-not (Test-Gcloud iam service-accounts describe $account --project $ProjectI
 }
 }
 
+$projectNumber = (& gcloud projects describe $ProjectId --format 'value(projectNumber)').Trim()
+$runHost = "$Service-$projectNumber.$Region.run.app"
+if (-not $PublicOrigin) { $PublicOrigin = "https://$runHost" }
+$publicHost = ([Uri]$PublicOrigin).Host
+# Your own domain goes through the Cloudflare Worker (infra/cloudflare), which reaches Cloud Run by its run.app name,
+# so both names are allowed (never wildcards) and the Worker proves itself with a shared secret.
+$customDomain = $publicHost -ne $runHost
+$allowedHosts = if ($customDomain) { "$publicHost;$runHost" } else { $publicHost }
+
 Write-Host '2/5 Secrets (asks only for ones not stored yet)'
 Confirm-Secret kutax-database { Read-Secret 'Supabase connection string (session pooler, port 5432, ending ;SSL Mode=Require)' -MinLength 40 }
 Confirm-Secret kutax-storage-access-key { Read-Secret 'Cloudflare R2 access key ID' -MinLength 16 }
@@ -105,6 +114,11 @@ if ($Unattended) {
   Set-Secret kutax-keys-certificate-password $password
 }
 $secrets = @('kutax-database', 'kutax-storage-access-key', 'kutax-storage-secret-key', 'kutax-keys-certificate', 'kutax-keys-certificate-password')
+if ($customDomain) {
+  # Generated once and shared with the Worker (see docs/operations/cloud-run.md); never printed.
+  Confirm-Secret kutax-origin-secret { [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).ToLowerInvariant() }
+  $secrets += 'kutax-origin-secret'
+}
 if ($SmtpHost) {
   if (-not $EmailFrom) { throw 'Give -EmailFrom (the sender address) with -SmtpHost.' }
   Confirm-Secret kutax-smtp-password { Read-Secret "SMTP password for $SmtpUsername@$SmtpHost" -MinLength 8 }
@@ -121,11 +135,9 @@ $registry = "$Region-docker.pkg.dev/$ProjectId/kutax"
 $appImage = "$registry/app:$tag"; $clamavImage = "$registry/clamav:$tag"
 Invoke-Gcloud builds submit --config infra/cloudrun/cloudbuild.yaml --substitutions "_APP_IMAGE=$appImage,_CLAMAV_IMAGE=$clamavImage" --project $ProjectId .
 
-$projectNumber = (& gcloud projects describe $ProjectId --format 'value(projectNumber)').Trim()
-if (-not $PublicOrigin) { $PublicOrigin = "https://$Service-$projectNumber.$Region.run.app" }
-$publicHost = ([Uri]$PublicOrigin).Host
-$shared = "ASPNETCORE_ENVIRONMENT=Production,PublicOrigin=$PublicOrigin,AllowedHosts=$publicHost,Production__ManagedServices=true,DataProtection__Store=Database,Storage__Endpoint=$StorageEndpoint,Storage__Bucket=$StorageBucket,Storage__Region=auto,Scanning__Host=localhost,Processing__Enabled=false"
+$shared = "ASPNETCORE_ENVIRONMENT=Production,PublicOrigin=$PublicOrigin,AllowedHosts=$allowedHosts,Production__ManagedServices=true,DataProtection__Store=Database,Storage__Endpoint=$StorageEndpoint,Storage__Bucket=$StorageBucket,Storage__Region=auto,Scanning__Host=localhost,Processing__Enabled=false"
 $secretEnv = 'ConnectionStrings__Database=kutax-database:latest,Storage__AccessKey=kutax-storage-access-key:latest,Storage__SecretKey=kutax-storage-secret-key:latest,DataProtection__CertificateBase64=kutax-keys-certificate:latest,DataProtection__CertificatePassword=kutax-keys-certificate-password:latest'
+if ($customDomain) { $secretEnv += ',Origin__SharedSecret=kutax-origin-secret:latest' }
 
 Write-Host '4/5 Database migrations and storage setup'
 $setupArgs = '--migrate,--initialise-storage'
@@ -143,8 +155,13 @@ if ($AdminEmail) { Invoke-Gcloud secrets delete kutax-bootstrap-password --quiet
 
 Write-Host '5/5 Deploying the service'
 $values = @{ SERVICE = $Service; REGION = $Region; SERVICE_ACCOUNT = $account; APP_IMAGE = $appImage; CLAMAV_IMAGE = $clamavImage;
-  PUBLIC_ORIGIN = $PublicOrigin; PUBLIC_HOST = $publicHost; STORAGE_ENDPOINT = $StorageEndpoint; STORAGE_BUCKET = $StorageBucket
+  PUBLIC_ORIGIN = $PublicOrigin; PUBLIC_HOST = $allowedHosts; STORAGE_ENDPOINT = $StorageEndpoint; STORAGE_BUCKET = $StorageBucket
   REGISTRATION_ENABLED = $(if ($AllowRegistration) { 'true' } else { 'false' })
+  ORIGIN_ENV = $(if ($customDomain) { @"
+            - name: Origin__SharedSecret
+              valueFrom:
+                secretKeyRef: { name: kutax-origin-secret, key: latest }
+"@.TrimEnd() } else { '' })
   EMAIL_ENV = $(if ($SmtpHost) { @"
             - { name: Email__Host, value: "$SmtpHost" }
             - { name: Email__Port, value: "$SmtpPort" }
@@ -164,14 +181,25 @@ try {
 } finally { Remove-Item $rendered -Force }
 Invoke-Gcloud run services add-iam-policy-binding $Service --member allUsers --role roles/run.invoker --region $Region --project $ProjectId | Out-Null
 
-# The release counts only once the new revision answers: database, migrations and the bucket all checked.
+# The release counts only once the new revision answers: database, migrations and the bucket all checked. With your
+# own domain, a deploy by hand first asks Cloud Run directly (with the Worker's secret), then through Cloudflare.
+function Wait-Ready([string] $Url, [hashtable] $Headers = @{}) {
+  $deadline = (Get-Date).AddMinutes(4)
+  while ((Get-Date) -lt $deadline) {
+    try { if ((Invoke-WebRequest -Uri "$Url/api/health/ready" -Headers $Headers -TimeoutSec 30 -SkipHttpErrorCheck).StatusCode -eq 200) { return $true } } catch { }
+    Start-Sleep -Seconds 5
+  }
+  return $false
+}
 Write-Host 'Checking the new release is ready'
-$deadline = (Get-Date).AddMinutes(4)
-while ($true) {
-  try {
-    if ((Invoke-WebRequest -Uri "$PublicOrigin/api/health/ready" -TimeoutSec 30 -SkipHttpErrorCheck).StatusCode -eq 200) { break }
-  } catch { }
-  if ((Get-Date) -gt $deadline) { throw "Deployed, but $PublicOrigin/api/health/ready did not answer 200 within 4 minutes. Check the service logs in Cloud Run." }
-  Start-Sleep -Seconds 5
+if ($customDomain -and -not $Unattended) {
+  $originSecret = (& gcloud secrets versions access latest --secret kutax-origin-secret --project $ProjectId)
+  if (-not (Wait-Ready "https://$runHost" @{ 'X-KuTax-Origin-Verify' = $originSecret })) { throw "Deployed, but the new revision didn't answer /api/health/ready within 4 minutes. Check the service logs in Cloud Run." }
+  if (-not (Wait-Ready $PublicOrigin)) {
+    Write-Warning "KuTax is running, but $PublicOrigin doesn't reach it yet. Deploy the Cloudflare Worker with the shared secret (docs/operations/cloud-run.md, Your own domain)."
+    return
+  }
+} elseif (-not (Wait-Ready $PublicOrigin)) {
+  throw "Deployed, but $PublicOrigin/api/health/ready did not answer 200 within 4 minutes. Check the service logs in Cloud Run."
 }
 Write-Host "Done: $PublicOrigin"
