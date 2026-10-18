@@ -7,7 +7,8 @@
   1. Creates a Workload Identity pool and GitHub provider that accept only workflows from this repository's main
      branch. GitHub proves who it is with a short-lived token; there is no JSON key to leak.
   2. Creates the kutax-deployer service account with just what a release needs: build images (Cloud Build), deploy
-     the service and setup job (Cloud Run), and run them as kutax-run. It can't read the app's secrets.
+     the service and setup job (Cloud Run), and run them as kutax-run. It can't read the app's secrets, except the
+     Cloudflare Worker's shared secret, used to check a release directly on Cloud Run.
   3. Stores the non-secret settings the workflow needs as GitHub repository variables (with the gh CLI, if signed in)
      or prints them to add by hand.
   Safe to run again.
@@ -65,6 +66,11 @@ Invoke-Gcloud storage buckets add-iam-policy-binding "gs://${ProjectId}_cloudbui
 # Running the service and setup job as kutax-run, and builds as the default build account.
 foreach ($runAs in $runAccount, "$projectNumber-compute@developer.gserviceaccount.com") {
   Invoke-Gcloud iam service-accounts add-iam-policy-binding $runAs --member "serviceAccount:$deployer" --role roles/iam.serviceAccountUser --project $ProjectId | Out-Null
+}
+# Checking a release on your own domain: the deploy asks Cloud Run directly with the Worker's secret (this one secret
+# only; it can't read the database or storage credentials).
+if (Test-Gcloud secrets describe kutax-origin-secret --project $ProjectId) {
+  Invoke-Gcloud secrets add-iam-policy-binding kutax-origin-secret --member "serviceAccount:$deployer" --role roles/secretmanager.secretAccessor --project $ProjectId | Out-Null
 }
 Invoke-Gcloud iam service-accounts add-iam-policy-binding $deployer --role roles/iam.workloadIdentityUser `
   --member "principalSet://iam.googleapis.com/projects/$projectNumber/locations/global/workloadIdentityPools/github/attribute.repository/$Repository" --project $ProjectId | Out-Null

@@ -183,8 +183,8 @@ Invoke-Gcloud run services add-iam-policy-binding $Service --member allUsers --r
 
 # The release counts only once the new revision answers: database, migrations and the bucket all checked. With your
 # own domain, a deploy by hand first asks Cloud Run directly (with the Worker's secret), then through Cloudflare.
-function Wait-Ready([string] $Url, [hashtable] $Headers = @{}) {
-  $deadline = (Get-Date).AddMinutes(4)
+function Wait-Ready([string] $Url, [hashtable] $Headers = @{}, [int] $Minutes = 4) {
+  $deadline = (Get-Date).AddMinutes($Minutes)
   while ((Get-Date) -lt $deadline) {
     try { if ((Invoke-WebRequest -Uri "$Url/api/health/ready" -Headers $Headers -TimeoutSec 30 -SkipHttpErrorCheck).StatusCode -eq 200) { return $true } } catch { }
     Start-Sleep -Seconds 5
@@ -192,12 +192,14 @@ function Wait-Ready([string] $Url, [hashtable] $Headers = @{}) {
   return $false
 }
 Write-Host 'Checking the new release is ready'
-if ($customDomain -and -not $Unattended) {
+if ($customDomain) {
+  # Straight to Cloud Run with the Worker's secret: this checks KuTax itself, whatever Cloudflare's bot rules do with
+  # requests from build machines. Then through the domain, which only warns (CI runners can be challenged there).
   $originSecret = (& gcloud secrets versions access latest --secret kutax-origin-secret --project $ProjectId)
+  if (-not $originSecret) { throw 'Could not read kutax-origin-secret to check the release (CI: run scripts/Setup-GitHubDeploy.ps1 again).' }
   if (-not (Wait-Ready "https://$runHost" @{ 'X-KuTax-Origin-Verify' = $originSecret })) { throw "Deployed, but the new revision didn't answer /api/health/ready within 4 minutes. Check the service logs in Cloud Run." }
-  if (-not (Wait-Ready $PublicOrigin)) {
-    Write-Warning "KuTax is running, but $PublicOrigin doesn't reach it yet. Deploy the Cloudflare Worker with the shared secret (docs/operations/cloud-run.md, Your own domain)."
-    return
+  if (-not (Wait-Ready $PublicOrigin -Minutes 1)) {
+    Write-Warning "KuTax is running, but $PublicOrigin didn't answer from here. Check the Cloudflare Worker (docs/operations/cloud-run.md, Your own domain); Cloudflare's bot protection may also be challenging this machine."
   }
 } elseif (-not (Wait-Ready $PublicOrigin)) {
   throw "Deployed, but $PublicOrigin/api/health/ready did not answer 200 within 4 minutes. Check the service logs in Cloud Run."
