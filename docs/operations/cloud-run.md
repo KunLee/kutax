@@ -83,6 +83,7 @@ It sets up:
   - Cloud Build editor;
   - Cloud Run admin;
   - project viewer (it can see that secrets exist but can't read them);
+  - reading `kutax-origin-secret` only, so it can check a release directly on Cloud Run. GitHub's runners can be challenged by Cloudflare's bot protection, so the check through the domain only warns;
   - write access to the Cloud Build source bucket;
   - acting as `kutax-run` and the default build account.
 - **GitHub repository variables:** with the `gh` CLI if you're signed in; otherwise it prints them for you to add.
